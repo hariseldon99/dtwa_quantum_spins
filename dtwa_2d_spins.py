@@ -28,7 +28,7 @@ def run_dtwa():
 	mux, nux = np.floor(nu/c), np.floor(mu/c)
 	muy, nuy = nu%r, mu%r
 	dmn = np.sqrt((mux-nux)**2+(muy-nuy)**2)
-	jmat[mu,nu] = 1.0/np.pow(dmn,alpha)
+	jmat[mu,nu] = 1.0/pow(dmn,alpha)
 	
     #Initiate the parameters in object
     p = dtwa.ParamData(hopmat=jmat,norm=1.0, latshape=lattice_shape,\
