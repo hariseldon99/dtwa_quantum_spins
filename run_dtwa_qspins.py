@@ -2,8 +2,8 @@
 import numpy as np
 import sys
 from mpi4py import MPI
-sys.path.append("/home/daneel/gitrepos/dtwa_ising_longrange/")
-import dtwa_ising_longrange as dtwa
+sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/")
+import dtwa_quantum_spins as dtwa
   
 def run_dtwa():
   comm = MPI.COMM_WORLD
