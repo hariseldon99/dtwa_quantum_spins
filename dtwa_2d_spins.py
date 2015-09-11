@@ -20,31 +20,32 @@ def run_dtwa():
   for l in lattice_shapes:
     
     #Build the hopping matrix
-    jmat = np.zeros(l)
     r, c = l
     latsize = r * c
+    jmat = np.zeros((latsize, latsize))
     for mu in xrange(latsize):
-      for nu in xrange(mu+1, latsize):
-	mux, nux = np.floor(nu/c), np.floor(mu/c)
-	muy, nuy = nu%r, mu%r
-	dmn = np.sqrt((mux-nux)**2+(muy-nuy)**2)
-	jmat[mu,nu] = 1.0/pow(dmn,alpha)
+      for nu in xrange(mu, latsize):
+        if mu != nu:
+	  mux, nux = np.floor(nu/c), np.floor(mu/c)
+	  muy, nuy = nu%r, mu%r
+	  dmn = np.sqrt((mux-nux)**2+(muy-nuy)**2)
+	  jmat[mu,nu] = 1.0/pow(dmn,alpha)
     
     #Initiate the parameters in object
-    p = dtwa.ParamData(hopmat=(jmat+jmat.T)/2.0,norm=1.0, latshape=lattice_shape,\
+    p = dtwa.ParamData(hopmat=(jmat+jmat.T)/2.0,norm=1.0, latshape=l,\
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
-    p.output_magx = "sx_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_magy = "sy_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_magz = "sz_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_magx = "sx_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_magy = "sy_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_magz = "sz_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
   
-    p.output_sxvar = "sxvar_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_syvar = "syvar_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_szvar = "szvar_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_sxvar = "sxvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_syvar = "syvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_szvar = "szvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
 
-    p.output_sxyvar = "sxyvar_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_sxzvar = "sxzvar_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_syzvar = "syzvar_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_sxyvar = "sxyvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_sxzvar = "sxzvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
+    p.output_syzvar = "syzvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
     
     #Initiate the DTWA system with the parameters and niter
     d = dtwa.Dtwa_System(p, comm, n_t=niter, file_output=True, \
