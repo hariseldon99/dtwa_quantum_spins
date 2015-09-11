@@ -754,7 +754,7 @@ class Dtwa_System:
       else:
 	return None
 
-  def dtwa_ising_longrange_2ndorder(self, time_info):
+  def dtwa_ising_longrange_2ndorder(self, time_info, sampling):
       comm=self.comm
       N = self.latsize
       (t_init, n_cycles, n_steps) = time_info
@@ -812,18 +812,29 @@ class Dtwa_System:
 
       for runcount in xrange(0, nt_loc, 1):
 	  random.seed(local_seeds[runcount])
-	  #According to Schachenmayer, the wigner function of the quantum
-	  #state generates the below initial conditions classically
 	  sx_init = np.ones(N)
-	  sy_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
-	  sz_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
-	  #Set initial conditions for the dynamics locally to vector 
-	  #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
-	  #s^z,s^z,s^z, ...]
-	  s_init_spins = np.concatenate((sx_init, sy_init, sz_init))
-	  # Set initial correlations to 0.
-	  s_init_corrs = np.zeros(9*N*N)
-	  
+	  if sampling == "spr":
+	    #According to Schachenmayer, the wigner function of the quantum
+	    #state generates the below initial conditions classically
+	    sy_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+	    sz_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+	    #Set initial conditions for the dynamics locally to vector 
+	    #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
+	    #s^z,s^z,s^z, ...]
+	    s_init_spins = np.concatenate((sx_init, sy_init, sz_init))
+	    # Set initial correlations to 0.
+	    s_init_corrs = np.zeros(9*N*N)
+	  elif sampling == "1-0":
+	    spin_choices = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
+	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
+	    s_init_spins = spins.T.flatten()
+	  elif sampling == "all":
+	    spin_choices_spr = np.array([(1, 1,1),(1, 1,-1),(1, -1,1),(1, -1,-1)])
+	    spin_choices_10 = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
+	    spin_choices = np.concatenate((spin_choices_10, spin_choices_spr))
+	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
+	    s_init_spins = spins.T.flatten()
+ 
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
@@ -958,9 +969,9 @@ class Dtwa_System:
       else:
 	return None
   
-  def evolve(self, time_info):
+  def evolve(self, time_info, sampling="spr"):
     if self.s_order:
-      return self.dtwa_ising_longrange_2ndorder(time_info)
+      return self.dtwa_ising_longrange_2ndorder(time_info, sampling)
     else:
       return self.dtwa_ising_longrange_1storder(time_info)
       
