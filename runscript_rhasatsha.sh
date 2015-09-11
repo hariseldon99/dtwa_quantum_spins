@@ -13,7 +13,7 @@
 ##Number of nodes and procs per node.
 ##The ib at the end means infiniband. Use that or else MPI gets confused 
 ##with ethernet
-#PBS -l nodes=10:ppn=8
+#PBS -l nodes=10:ppn=8:scratch
 #########################################################################
 ##Send me email when my job aborts, begins, or ends
 #PBS -m ea
