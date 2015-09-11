@@ -339,12 +339,12 @@ class OutData:
         self.syvar = (1/lsize) + (self.syvar/(w_totals * lsize * lsize))
         self.syvar = self.syvar - (self.sy)**2
         self.szvar = (1/lsize) + (self.szvar/(w_totals * lsize * lsize))
-        self.szvar = self.szvar - (self.sy)**2
-        self.sxyvar = (1/lsize) + (self.sxyvar/(w_totals * lsize * lsize))
+        self.szvar = self.szvar - (self.sz)**2
+        self.sxyvar = (self.sxyvar/(w_totals * lsize * lsize))
         self.sxyvar = self.sxyvar - (self.sx * self.sy)
-        self.sxzvar = (1/lsize) + (self.sxzvar/(w_totals * lsize * lsize))
+        self.sxzvar = (self.sxzvar/(w_totals * lsize * lsize))
         self.sxzvar = self.sxzvar - (self.sx * self.sz)
-        self.syzvar = (1/lsize) + (self.syzvar/(w_totals * lsize * lsize))
+        self.syzvar = (self.syzvar/(w_totals * lsize * lsize))
         self.syzvar = self.syzvar - (self.sy * self.sz)
 
     def dump_data(self):
