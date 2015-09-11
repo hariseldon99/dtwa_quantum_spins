@@ -825,7 +825,7 @@ class Dtwa_System:
 	  s_init_corrs = np.zeros(9*N*N)
 	  
 	  #Redirect unwanted stdout warning messages to /dev/null
-	  with stdout_redirected(to=sys.stdout):
+	  with stdout_redirected():
 	    if self.verbose:
 	      if self.jac:
 		s, info = odeint(func_2ndorder, \
