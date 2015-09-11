@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 from mpi4py import MPI
-sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/")
+sys.path.append("/home/daneel/dtwa_quantum_spins/")
 import dtwa_quantum_spins as dtwa
   
 def run_dtwa():
@@ -11,11 +11,11 @@ def run_dtwa():
   size = comm.Get_size()
 
   #Parameters
-  lattice_shapes = [(4,2)]
-  alpha = 1.0
-  jx, jy, jz = 0.0, 0.0, -1.0
-  hx, hy, hz = -0.2, 0.0, 0.0
-  niter = 2000
+  lattice_shapes = [(5,4)]
+  alpha = 3.0
+  jx, jy, jz = -0.5, -0.5, 0.0
+  hx, hy, hz = 0.0, 0.0, 0.0
+  niter = 20000
  
   for l in lattice_shapes:
     
@@ -24,14 +24,14 @@ def run_dtwa():
     r, c = l
     latsize = r * c
     for mu in xrange(latsize):
-      for nu in xrange(latsize):
+      for nu in xrange(mu+1, latsize):
 	mux, nux = np.floor(nu/c), np.floor(mu/c)
 	muy, nuy = nu%r, mu%r
 	dmn = np.sqrt((mux-nux)**2+(muy-nuy)**2)
 	jmat[mu,nu] = 1.0/pow(dmn,alpha)
-	
+    
     #Initiate the parameters in object
-    p = dtwa.ParamData(hopmat=jmat,norm=1.0, latshape=lattice_shape,\
+    p = dtwa.ParamData(hopmat=(jmat+jmat.T)/2.0,norm=1.0, latshape=lattice_shape,\
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
     p.output_magx = "sx_time_beta_"+str(b)+"_N_"+str(l)+"_2ndorder.txt"
@@ -53,7 +53,7 @@ def run_dtwa():
     #Prepare the times
     t0 = 0.0
     ncyc = 1.0
-    nsteps = 100
+    nsteps = 200
 
     data = d.evolve((t0, ncyc, nsteps))
 
