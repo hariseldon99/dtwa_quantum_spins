@@ -21,7 +21,7 @@
 #PBS -M daneel@sun.ac.za
 #########################################################################
 
-SCRIPT = "./run_dtwa.py"
+SCRIPT = "./dtwa_2d_spins.py"
 # Make sure I'm the only one that can read my output
 umask 0077
 # Load the module system
@@ -40,7 +40,7 @@ NO_OF_CORES=$(cat $PBS_NODEFILE | wc -l)
 #########################################################################
 ##Now, run the code
 BEGINTIME=$(date +"%s")
-mpirun -np $NO_OF_CORES -machinefile $PBS_NODEFILE  python $SCRIPT 
+mpirun -np $NO_OF_CORES -machinefile $PBS_NODEFILE  python -W ignore $SCRIPT 
 ENDTIME=$(date +"%s")
 ELAPSED_TIME=$(($ENDTIME-$BEGINTIME))
 

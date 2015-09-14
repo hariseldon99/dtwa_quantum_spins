@@ -465,7 +465,7 @@ class Dtwa_System:
     N = params.latsize
     
     #Only computes these if you want 2nd order
-    if self.s_order:
+    if self.s_order and self.jac:
       #Below are the constant subblocks of the 2nd order Jacobian
       #The 00 subblock is the first order Jacobian in func below
       #The entire 01 subblock, fully time independent (ds_dot/dg):
@@ -822,8 +822,6 @@ class Dtwa_System:
 	    #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
 	    #s^z,s^z,s^z, ...]
 	    s_init_spins = np.concatenate((sx_init, sy_init, sz_init))
-	    # Set initial correlations to 0.
-	    s_init_corrs = np.zeros(9*N*N)
 	  elif sampling == "1-0":
 	    spin_choices = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
 	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
@@ -834,6 +832,10 @@ class Dtwa_System:
 	    spin_choices = np.concatenate((spin_choices_10, spin_choices_spr))
 	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
 	    s_init_spins = spins.T.flatten()
+	  else:
+	    pass
+	  # Set initial correlations to 0.
+	  s_init_corrs = np.zeros(9*N*N)
  
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
@@ -898,6 +900,8 @@ class Dtwa_System:
 	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
 	  sview = s.view()
 	  gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
+	  gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
+	  
 	  #Quantum spin variance 
 	  sx_var = np.sum(gt[:,0,0,:,:], axis=(-1,-2))
 	  sx_var += (np.sum(s[:, 0:N], axis=1)**2 \
@@ -914,14 +918,20 @@ class Dtwa_System:
 	  sxy_var = np.sum(gt[:,0,1,:,:], axis=(-1,-2))
 	  sxy_var += np.sum([fftconvolve(s[m, 0:N], s[m, N:2*N]) \
 	  for m in xrange(t_output.size)], axis=1)
-	  
+	  #Remove the diagonal parts
+	  sxy_var -= np.sum(s[:, 0:N] *  s[:, N:2*N], axis=1) 
+
 	  sxz_var = np.sum(gt[:,0,2,:,:], axis=(-1,-2))
 	  sxz_var += np.sum([fftconvolve(s[m, 0:N], s[m, 2*N:3*N]) \
 	    for m in xrange(t_output.size)], axis=1)
+	  #Remove the diagonal parts
+	  sxz_var -= np.sum(s[:, 0:N] *  s[:, 2*N:3*N], axis=1)
 	  
 	  syz_var = np.sum(gt[:,1,2,:,:], axis=(-1,-2))
 	  syz_var += np.sum([fftconvolve(s[m, N:2*N], s[m, 2*N:3*N]) \
 	    for m in xrange(t_output.size)], axis=1)
+	  #Remove the diagonal parts
+	  syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
 
 	  localdata = OutData(t_output, sx_expectations, sy_expectations,\
 	    sz_expectations, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
