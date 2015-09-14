@@ -18,5 +18,5 @@
     * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 """
 from __future__ import division, print_function
-__all__ = ["dtwa_quantum_spins", "reductions","spin_squeezing"]
+__all__ = ["dtwa_quantum_spins", "reductions","redirect_stdout"]
 from dtwa_quantum_spins import *
