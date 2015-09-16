@@ -1,7 +1,7 @@
-dtwa_ising_longrange
+dtwa_quantum_spins
 =============
 
-Discrete Truncated Wigner Approximation for quantum spins and transverse fields with time-periodic drive.
+Discrete Truncated Wigner Approximation (dTWA) for quantum spins and transverse fields with time-periodic drive.
 There are three (3) sampling schemes used, depending on the choice of phase point operators
 
 
@@ -18,7 +18,9 @@ import dtwa_quantum_spins as dtwa
 
 #Your codes
 #...
+#You'll need to create the hopping matrix
 #...
+
 
 #Initiate the parameters for dTWA
 p = dtwa.ParamData(hopmat=hopping_matrix,norm=scales_hopmat, latsize=lattice_size,\
