@@ -25,6 +25,7 @@ p = dtwa.ParamData(hopmat=hopping_matrix,norm=scales_hopmat, latsize=lattice_siz
 	h0=periodic_drive_amplitude, omega=periodic_drive_frequency, \
 	  hx=x_transverse_field, hy=y_transverse_field, hz=z_transverse_field\
 	    jx=x_hopping, jy=x_hopping, jz=x_hopping)
+
 #Additional parameters like filenames etc. can be set directly
 p.output_magx = "sx_time.txt"
 p.output_magy = "sy_time.txt"
