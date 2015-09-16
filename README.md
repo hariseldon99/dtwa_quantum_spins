@@ -18,9 +18,10 @@ import dtwa_quantum_spins as dtwa
 
 #Your codes
 #...
-#You'll need to create the hopping matrix
+#You'll need to create the hopping matrix.
+#If you don't, then the default is is the dense Jmn hopping matrix with inverse 
+#power law decay for periodic boundary conditions.
 #...
-
 
 #Initiate the parameters for dTWA
 p = dtwa.ParamData(hopmat=hopping_matrix,norm=scales_hopmat, latsize=lattice_size,\
