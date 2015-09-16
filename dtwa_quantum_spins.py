@@ -1,5 +1,24 @@
 #!/usr/bin/env python
-#Author: Analabha Roy
+
+"""
+    Discrete Truncated Wigner Approximation (dTWA) for quantum spins
+    and transverse fields with time-periodic drive
+
+    * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    * Copyright (c) 2015 Analabha Roy (daneel@utexas.edu)
+    *
+    *This is free software: you can redistribute it and/or modify it under
+    *the terms of version 2 of the GNU Lesser General Public License
+    *as published by the Free Software Foundation.
+    *Notes:
+    *1. The initial state is currently hard coded to be the classical ground
+    *    state
+    *2. Primary references are
+    *   Anatoli: Ann. Phys 325 (2010) 1790-1852
+    *   Mauritz: arXiv:1209.3697
+    *   Schachenmayer: arXiv:1408.4441
+    * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+"""
 
 from __future__ import division, print_function
 from mpi4py import MPI
@@ -29,10 +48,16 @@ eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
 eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 
 def t_deriv(quantities, times):
+  """
+  Computes the time derivative of quantities wrt times
+  """
   dt = np.gradient(times)
   return np.gradient(quantities, dt)
 
 def drive(t, params):
+    """
+    Returns the time-dependent drive h(t)
+    """
     return params.h0 * np.cos(params.omega * t)
 
 def weyl_hamilt(s,times,param):
@@ -246,24 +271,79 @@ def jac_2ndorder(s, t, param):
   full_jacobian[3*N:, 3*N:] += (np.einsum("rmn,am,ml,nh,rpb->abrpmnlh",\
     jjtensor,stensor,param.deltamn,param.deltamn,eijk) + \
       np.einsum("rmn,bn,mh,nl,rpa->abrpmnlh",\
-	jjtensor,stensor,param.deltamn,param.deltamn,eijk)).reshape(9*N*N,9*N*N)
+	jjtensor,stensor,param.deltamn,param.deltamn,\
+	  eijk)).reshape(9*N*N,9*N*N)
   full_jacobian[3*N:, 3*N:] -= (np.einsum("pmn,am,mh,nl,prb->abrpmnlh",\
     jjtensor,stensor,param.deltamn,param.deltamn,eijk) + \
       np.einsum("pmn,bn,ml,nh,pra->abrpmnlh",\
-	jjtensor,stensor,param.deltamn,param.deltamn,eijk)).reshape(9*N*N,9*N*N)    
+	jjtensor,stensor,param.deltamn,param.deltamn,\
+	  eijk)).reshape(9*N*N,9*N*N)    
   full_jacobian[3*N:, 3*N:] = 2.0 * (full_jacobian[3*N:, 3*N:]/param.norm)
   
   return full_jacobian
 
 class ParamData:
-    """Class to store parameters, precalculated objects,
-	filenames, objects like Kac norm
-	time-independent part of Jacobian. Set s_order to 
-	true if doing second order dtwa'
+    """Class that stores Hamiltonian and lattice parameters 
+       to be used in each dTWA instance. This class has no 
+       methods other than the constructor.
     """
-    def __init__(self, hopmat = None, norm=1.0, latshape=(10,1), \
+    
+    def __init__(self, hopmat = None, norm=1.0, latsize=11, \
 			  h0=1.0, omega=0.0, hx=0.0, hy=0.0, hz=0.0,\
 			    jx=0.0, jy=0.0, jz=1.0):
+      
+      """
+       Usage:
+       p = ParamData(hopmat = None, norm=1.0, latsize=100, h0=1.0,\ 
+		      omega=0.0, hx=0.0, hy=0.0, hz=0.0,\ 
+			jx=0.0, jy=0.0, jz=1.0)
+       
+       All parameters (arguments) are optional.
+       
+       Parameters:
+       hopmat 	=  The hopping matrix J for the Ising part of the 
+		   Hamiltonian, i.e. J_{ij} \sigma^{xyz}_i \sigma^{xyz}_j
+		   Example: In the 1-dimensional ising model with nearest 
+		   neighbour hopping (open boundary conditions), J can be 
+		   obtained via numpy by:
+		   
+		     import numpy as np
+		     J = np.diagflat(np.ones(10),k=1) +\ 
+			    np.diagflat(np.ones(10),k=-1)
+		   
+		   The diagonal is expected to be 0.0. There are no 
+		   internal checks for this. When set to 'None', the module
+		   defaults to the hopmat of the 1D ising model with long 
+		   range coulomb hopping and open boundary conditions.
+		   
+       norm 	=  This quantity sinply scales the hopmat in case you 
+	           need it		   
+       latsize  =  The size of your lattice as an integer. This can be in 
+		   any dimensions
+       h0	=  The drive amplitude. This is the amplitude of a periodic
+		   cosine drive on the transverse field (if any). Defaults to 
+		   unity
+       omega	=  The frequency of the abovementioned drive. Defaults to 0.
+       h(x,y,z) =  The values of the uniform transverse fields i.e, the terms
+		   that scale \sigma^{xyz} respectively in the Hamiltonian 
+		   Defaults to 0.
+       j(x,y,z) =  The values of the bare hopping i.e, the terms that scale
+		   each \sigma^{xyz}_i\sigma^{xyz}_j. 
+		   Defaults to (0,0,1). Set all to unity if so desired.
+      
+       Additional parameters:
+       output_mag(x,y,z)  = Output file(s) for the (x,y,z) magnetization. 
+			   Internal defaults
+       output_s(x,y,z)var = Output file(s) for the (x,y,z) fluctuations in
+			   magnetization. Internal defaults
+       output_s(a)var	  = Output file(s) for the (a) correlations summed 
+			   over all sites. Internal defaults. here, a can 
+			   be (xy,xz,yz)
+			   
+       Return value: 
+       An object that stores all the parameters above. 
+      """
+      
       #Default Output file names. Each file dumps a different observable
       self.output_magx = "sx_outfile.txt"
       self.output_magy = "sy_outfile.txt"
@@ -280,10 +360,7 @@ class ParamData:
       #Whether to normalize with Kac norm or not
       self.norm = norm
       
-      self.latshape = latshape
-
-      nx, ny = self.latshape
-      self.latsize = nx * ny
+      self.latsize = latsize
       
       self.h0 = h0 # Drive amplitude
       self.omega = omega #Drive frequency
@@ -321,7 +398,7 @@ class ParamData:
 	  self.jmat = hopmat  
 
 class OutData:
-    """Class to store output data"""
+    """Class to store output data in a dictionary"""
     def __init__(self, t, sx, sy, sz, sxx, syy, szz, sxy, sxz, syz,\
       params):
         self.t_output = t
@@ -437,21 +514,82 @@ class OutData_ij:
 
 class Dtwa_System:
   """
-  This is the class that creates the DTWA system, 
-  has all MPI_Gather routines for aggregating the 
-  samples, and executes the dtwa methods (1st and 2nd order)
-  Set s_order to true if doing second order dtwa
-  Set jac to false if you don't want to evaluate the jacobian, since 
-  it may be too big in some cases and cause the routine to crash.
+    Class that creates the dTWA system.
+    
+       Introduction:  
+	This class instantiates an object encapsulating the dTWA problem.
+	It has all MPI_Gather routines for aggregating observable data
+	from the different random samples of initial conditions (which 
+	are run in parallel), and has methods that sample the trajectories
+	and execute the dTWA methods (1st order and 2nd order i.e. with 
+	BBGKY). These methods call integrators from scipy and time-evolve 
+	all the randomly sampled initial conditions.
   """
 
   def __init__(self, params, mpicomm, n_t=2000, file_output=True,\
 			  seed_offset=0,  s_order=False, jac=False,\
 			    verbose=True, sitedata=False):
     """
-    Input default values and amke precalculated objects
-    Comm = MPI Communicator
+    Initiates an instance of the Dtwa_System class. Copies parameters
+    over from an instance of ParamData and stores precalculated objects .
+    
+       Usage:
+       d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000,\ 
+			file_output=True, s_order=False, jac=False,\ 
+					verbose=True, sitedata=False)
+       
+       Parameters:
+       Paramdata 	= An instance of the class "ParamData". 
+			  See the relevant docs
+       MPI_COMMUNICATOR = The MPI communicator that distributes the samples
+			  to parallel processes. Set to MPI_COMM_SELF if 
+			  running serially
+       n_t		= Number of initial conditions to sample randomly 
+			  from the discreet spin phase space. Defaults to
+			  2000.
+       file_output      = Boolean for file output. Set to False if you 
+			  don't want data dumped to text files.			    
+       seed_offset      = Offset in the seed. The initial conditions are 
+			  sampled randomly by each processor using the 
+			  random generator in python with unique seeds for
+			  each processor. Each processor adds seeed_offset 
+			  to its seed. This allows you to ensure that 
+			  separate dTWA objects have uniquely random initial 
+			  states by changing seed_offset.
+			  Defaults to 0.
+       s_order          = Boolean for choosing the second order method,
+			  i.e. with BBGKY corrections on regular dTWA.
+			  Defaults to False, leading to the first order
+			  i.e. regular dTWA.
+       jac		= Boolean for choosing to evaluate the jacobian
+			  during the integration of the sampled initial
+			  conditions. If this is set to "True", then stiff
+			  regions of the trajectories allow the integrator 
+			  to compute the jacobian from the analytical 
+			  formula. Defaults to False. 
+			  WARNING: Keep this boolean 'False' if the 
+			  lattice size is very large, as the jacobian size
+			  scales as size^2 X size^2, and can cause buffer 
+			  overflows.
+       verbose		= Boolean for choosing verbose outputs. Setting 
+			  to 'True' dumps verbose output to stdout, which
+			  consists of full output from the integrator, as
+			  well as the output of the time derivative
+			  of the Weyl symbol of the Hamiltonian that you
+			  have provided via the 'hopmat' and other input
+			  in ParamData. Defaults to 'False'.
+       sitedata         = Boolean for choosing to dump to stdout
+			  the observables evaluated at the midpoint 
+			  of the lattice and its nearest neighbour. 
+			  Defaults to 'False'. 			  
+			  
+      Return value: 
+      An object that stores all the parameters above. If s_order
+      and 'jac' are set to 'True', then this object includes 
+      precalculated data for those parts of the second order 
+      jacobian that are time-independent. This is named 'dsdotdg'.
     """
+    
     self.jac = jac
     self.__dict__.update(params.__dict__)
     self.n_t = n_t
@@ -598,7 +736,7 @@ class Dtwa_System:
       else:
 	return None
       
-  def dtwa_ising_longrange_1storder(self, time_info):
+  def dtwa_spins_1storder(self, time_info):
       comm = self.comm
       N = self.latsize
       (t_init, n_cycles, n_steps) = time_info
@@ -754,7 +892,7 @@ class Dtwa_System:
       else:
 	return None
 
-  def dtwa_ising_longrange_2ndorder(self, time_info, sampling):
+  def dtwa_spins_2ndorder(self, time_info, sampling):
       comm=self.comm
       N = self.latsize
       (t_init, n_cycles, n_steps) = time_info
@@ -980,10 +1118,55 @@ class Dtwa_System:
 	return None
   
   def evolve(self, time_info, sampling="spr"):
+    """
+    This function calls the lsode 'odeint' integrator from scipy package
+    to evolve all the randomly sampled initial conditions in time. 
+    Depending on how the Dtwa_System class is instantiated, the function
+    chooses either the first order (i.e. purely classical dynamics)
+    or second order (i.e. classical + correlations via BBGKY corrections)
+    dTWA method(s). The lsode integrator controls integrator method and 
+    actual time steps adaptively. Verbosiy levels are decided during the
+    instantiation of this class. After the integration is complete, each 
+    process computes site observables for each trajectory, and used
+    MPI_Reduce to aggregate the sum to root. The root then returns the 
+    data as a dictionary, and, optionally (decided during instantiation),
+    dumps it all to files. An optional argument is the sampling scheme.
+    
+    
+       Usage:
+       data = d.evolve(times, sampling="spr")
+       
+       Required parameters:
+       times 		= A 3-tuple (t0, t1, steps), where t0(1) is the 
+			  initial (final) time, and steps are the number
+			  of time steps that are in the output. Note that
+			  the integrator method and the actual step sizes
+			  are controlled internally by the integrator. 
+			  See the relevant docs for scipy.integrate.odeint.
+			  
+       Optional parameters:
+       sampling		= The sampling scheme used. The choices are 
+			  1. "spr" : The prescription obtained from the
+				     phase point operators used by
+				     Schachenmayer et. al. in their paper.
+				     This is the default.
+			  2."1-0"  : <DESCRIBE>
+			  3."all"  : The prescription obtained from the 
+				     logical union of both the phase point
+				     operators above.
+
+      Return value: 
+      A dictionary that contains the times, and all observables.
+      This contains: 
+	1. The times, 
+	2. The single site observables (x,y and z), and 
+	3. All correlation sums (xx, yy, zz, xy, xz and yz).
+    """
+    
     if self.s_order:
-      return self.dtwa_ising_longrange_2ndorder(time_info, sampling)
+      return self.dtwa_spins_2ndorder(time_info, sampling)
     else:
-      return self.dtwa_ising_longrange_1storder(time_info)
+      return self.dtwa_spins_1storder(time_info)
       
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD

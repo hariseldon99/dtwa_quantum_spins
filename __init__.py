@@ -1,5 +1,5 @@
 """
-    Discrete Truncated Wigner Approximation for quantum spins
+    Discrete Truncated Wigner Approximation (dTWA) for quantum spins
     and transverse fields with time-periodic drive
 
     * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

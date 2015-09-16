@@ -21,10 +21,10 @@ def run_dtwa():
     
     #Build the hopping matrix
     r, c = l
-    latsize = r * c
-    jmat = np.zeros((latsize, latsize))
-    for mu in xrange(latsize):
-      for nu in xrange(mu, latsize):
+    size = r * c
+    jmat = np.zeros((size, size))
+    for mu in xrange(size):
+      for nu in xrange(mu, size):
         if mu != nu:
 	  mux, nux = np.floor(nu/c), np.floor(mu/c)
 	  muy, nuy = nu%r, mu%r
@@ -32,7 +32,7 @@ def run_dtwa():
 	  jmat[mu,nu] = 1.0/pow(dmn,alpha)
     
     #Initiate the parameters in object
-    p = dtwa.ParamData(hopmat=(jmat+jmat.T)/2.0,norm=1.0, latshape=l,\
+    p = dtwa.ParamData(hopmat=(jmat+jmat.T)/2.0,norm=1.0, latsize=size,\
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
     p.output_magx = "sx_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
