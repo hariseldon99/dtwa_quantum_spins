@@ -41,12 +41,15 @@ p.output_syzvar = "syzvar_time.txt"
 #Initiate the DTWA system with the parameters:
 #Set file_output to True if you want the data in the output dictionary to be dumped to 
 #the files named in 'p' above.
-#Set 's_order' to true if you want second order dTWA.
-#Set 'jac' to true if you want the integrator to use the jacobian of the BBGKY dynamics. Use
+#Set 's_order' to True if you want second order dTWA.
+#Set 'jac' to True if you want the integrator to use the jacobian of the BBGKY dynamics. Use
 #sparingly, since the size of the jacobian grows as lattice_size**2.
+#The 'sitedata' boolean dumps the single site and correlations of 
+#the middle site and its neighbor. Set to False if not needed.
 
 d = dtwa.Dtwa_System(p, MPI_COMMUNICATOR, n_t=number_of_sampled_trajectories, \
 	      file_output=True, s_order=False, jac=False, verbose=True, sitedata=False)
+
 #Prepare the times
 t0 = 0.0
 t1 = 1.0
