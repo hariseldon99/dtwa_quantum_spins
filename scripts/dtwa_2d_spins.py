@@ -32,7 +32,7 @@ def run_dtwa():
 	  jmat[mu,nu] = 1.0/pow(dmn,alpha)
     
     #Initiate the parameters in object
-    p = dtwa.ParamData(hopmat=(jmat+jmat.T)/2.0,norm=1.0, latsize=size,\
+    p = dtwa.ParamData(hopmat=(jmat+jmat.T),norm=1.0, latsize=size,\
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
     p.output_magx = "sx_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
