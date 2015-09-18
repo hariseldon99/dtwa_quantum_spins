@@ -11,11 +11,11 @@ def run_dtwa():
   size = comm.Get_size()
 
   #Parameters
-  lattice_shapes = [(5,4)]
+  lattice_shapes = [(11,1)]
   alpha = 3.0
   jx, jy, jz = -0.5, -0.5, 0.0
   hx, hy, hz = 0.0, 0.0, 0.0
-  niter = 20000
+  niter = 100000
  
   for l in lattice_shapes:
     
@@ -26,7 +26,7 @@ def run_dtwa():
     for mu in xrange(size):
       for nu in xrange(mu, size):
         if mu != nu:
-	  mux, nux = np.floor(nu/c), np.floor(mu/c)
+	  mux, nux = nu%c, mu%c
 	  muy, nuy = nu%r, mu%r
 	  dmn = np.sqrt((mux-nux)**2+(muy-nuy)**2)
 	  jmat[mu,nu] = 1.0/pow(dmn,alpha)
@@ -49,7 +49,7 @@ def run_dtwa():
     
     #Initiate the DTWA system with the parameters and niter
     d = dtwa.Dtwa_System(p, comm, n_t=niter, file_output=True, \
-		      s_order=False, verbose=True, sitedata=False)
+		      s_order=True, verbose=True, sitedata=False)
 
     #Prepare the times
     t0 = 0.0
