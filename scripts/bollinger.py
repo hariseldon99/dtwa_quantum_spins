@@ -17,8 +17,14 @@ def run_dtwa():
   niter = 2000
   
   #Import the hopping matrix
+  root = 0
   filename = "mode_code_1443141813_Jij.csv"
-  jmat = np.array(np.loadtxt(filename, delimiter=','))  
+  if rank == root:
+    jmat = np.array(np.loadtxt(filename, delimiter=','))  
+  else:
+    jmat = None
+  jmat = comm.bcast(jmat, root=root)
+  
   (row, col) = jmat.shape  
 
   #Initiate the parameters in object
