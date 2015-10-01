@@ -894,6 +894,7 @@ class Dtwa_System:
 
   def dtwa_spins_2ndorder(self, time_info, sampling):
       comm=self.comm
+      old_settings = np.seterr(all='ignore') #Prevent overflow warnings
       N = self.latsize
       (t_init, n_cycles, n_steps) = time_info
       rank = comm.rank
@@ -950,7 +951,7 @@ class Dtwa_System:
 
       for runcount in xrange(0, nt_loc, 1):
 	  random.seed(local_seeds[runcount])
-	  sx_init = np.ones(N)
+	  sx_init = np.ones(N, dtype="float128")
 	  if sampling == "spr":
 	    #According to Schachenmayer, the wigner function of the quantum
 	    #state generates the below initial conditions classically
@@ -972,9 +973,9 @@ class Dtwa_System:
 	    s_init_spins = spins.T.flatten()
 	  else:
 	    pass
+	  
 	  # Set initial correlations to 0.
-	  s_init_corrs = np.zeros(9*N*N)
- 
+	  s_init_corrs = np.zeros(9*N*N, dtype="float128")
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
@@ -1034,10 +1035,8 @@ class Dtwa_System:
 								      gij)
 	      list_of_local_ijdata.append(localdataij)
 		  
-	  old_settings = np.seterr(all='ignore') #Prevent overflow warnings
 	  #svec  is the tensor s^l_\mu
 	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
-	  s = np.array(s, dtype="float128")#Enlarge in mem 
 	  sview = s.view()
 	  gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
 	  gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
@@ -1071,8 +1070,7 @@ class Dtwa_System:
 	    for m in xrange(t_output.size)], axis=1)
 	  #Remove the diagonal parts
 	  syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
-	  np.seterr(**old_settings)  # reset to default
-	  
+	  	  
 	  localdata = OutData(t_output, sx_expectations, sy_expectations,\
 	    sz_expectations, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
 	      syz_var, self)
@@ -1115,8 +1113,10 @@ class Dtwa_System:
 	    print('# Cumulative number of Jacobian evaluations by root:', \
 	      np.sum(info['nje']))
 	  print('# Done!')
+	  np.seterr(**old_settings)  # reset to default
 	  return outdat
       else:
+	np.seterr(**old_settings)  # reset to default
 	return None
   
   def evolve(self, time_info, sampling="spr"):
