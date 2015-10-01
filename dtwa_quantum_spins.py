@@ -36,9 +36,6 @@ from scipy.integrate import odeint
 
 from pprint import pprint
 from tabulate import tabulate
- 
-#Prevent overflow warnings
-np.seterr(all='ignore')
    
 threshold = 1e-4
 root = 0
@@ -1037,13 +1034,13 @@ class Dtwa_System:
 								      gij)
 	      list_of_local_ijdata.append(localdataij)
 		  
-	  #svec  is the tensor s^l_\mu
-	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
-	  sview = s.view()
-	  gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
-	  gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
-	  
 	  with np.seterr(all='ignore'): #Prevent overflow warnings
+	    #svec  is the tensor s^l_\mu
+	    #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
+	    s = np.array(s, dtype="float128")#Enlarge in mem 
+	    sview = s.view()
+	    gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
+	    gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
 	    #Quantum spin variance 
 	    sx_var = np.sum(gt[:,0,0,:,:], axis=(-1,-2))
 	    sx_var += (np.sum(s[:, 0:N], axis=1)**2 \
