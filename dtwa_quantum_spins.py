@@ -1034,44 +1034,45 @@ class Dtwa_System:
 								      gij)
 	      list_of_local_ijdata.append(localdataij)
 		  
-	  with np.seterr(all='ignore'): #Prevent overflow warnings
-	    #svec  is the tensor s^l_\mu
-	    #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
-	    s = np.array(s, dtype="float128")#Enlarge in mem 
-	    sview = s.view()
-	    gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
-	    gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
-	    #Quantum spin variance 
-	    sx_var = np.sum(gt[:,0,0,:,:], axis=(-1,-2))
-	    sx_var += (np.sum(s[:, 0:N], axis=1)**2 \
-	      - np.sum(s[:, 0:N]**2, axis=1))
-		    
-	    sy_var = np.sum(gt[:,1,1,:,:], axis=(-1,-2))
-	    sy_var += (np.sum(s[:, N:2*N], axis=1)**2 \
-	    - np.sum(s[:, N:2*N]**2, axis=1))
-	    
-	    sz_var = np.sum(gt[:,2,2,:,:], axis=(-1,-2))
-	    sz_var += (np.sum(s[:, 2*N:3*N], axis=1)**2 \
-	    - np.sum(s[:, 2*N:3*N]**2, axis=1))
-	    
-	    sxy_var = np.sum(gt[:,0,1,:,:], axis=(-1,-2))
-	    sxy_var += np.sum([fftconvolve(s[m, 0:N], s[m, N:2*N]) \
+	  old_settings = np.seterr(all='ignore') #Prevent overflow warnings
+	  #svec  is the tensor s^l_\mu
+	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
+	  s = np.array(s, dtype="float128")#Enlarge in mem 
+	  sview = s.view()
+	  gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
+	  gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
+	  #Quantum spin variance 
+	  sx_var = np.sum(gt[:,0,0,:,:], axis=(-1,-2))
+	  sx_var += (np.sum(s[:, 0:N], axis=1)**2 \
+	    - np.sum(s[:, 0:N]**2, axis=1))
+		  
+	  sy_var = np.sum(gt[:,1,1,:,:], axis=(-1,-2))
+	  sy_var += (np.sum(s[:, N:2*N], axis=1)**2 \
+	  - np.sum(s[:, N:2*N]**2, axis=1))
+	  
+	  sz_var = np.sum(gt[:,2,2,:,:], axis=(-1,-2))
+	  sz_var += (np.sum(s[:, 2*N:3*N], axis=1)**2 \
+	  - np.sum(s[:, 2*N:3*N]**2, axis=1))
+	  
+	  sxy_var = np.sum(gt[:,0,1,:,:], axis=(-1,-2))
+	  sxy_var += np.sum([fftconvolve(s[m, 0:N], s[m, N:2*N]) \
+	  for m in xrange(t_output.size)], axis=1)
+	  #Remove the diagonal parts
+	  sxy_var -= np.sum(s[:, 0:N] *  s[:, N:2*N], axis=1) 
+
+	  sxz_var = np.sum(gt[:,0,2,:,:], axis=(-1,-2))
+	  sxz_var += np.sum([fftconvolve(s[m, 0:N], s[m, 2*N:3*N]) \
 	    for m in xrange(t_output.size)], axis=1)
-	    #Remove the diagonal parts
-	    sxy_var -= np.sum(s[:, 0:N] *  s[:, N:2*N], axis=1) 
-
-	    sxz_var = np.sum(gt[:,0,2,:,:], axis=(-1,-2))
-	    sxz_var += np.sum([fftconvolve(s[m, 0:N], s[m, 2*N:3*N]) \
-	      for m in xrange(t_output.size)], axis=1)
-	    #Remove the diagonal parts
-	    sxz_var -= np.sum(s[:, 0:N] *  s[:, 2*N:3*N], axis=1)
-	    
-	    syz_var = np.sum(gt[:,1,2,:,:], axis=(-1,-2))
-	    syz_var += np.sum([fftconvolve(s[m, N:2*N], s[m, 2*N:3*N]) \
-	      for m in xrange(t_output.size)], axis=1)
-	    #Remove the diagonal parts
-	    syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
-
+	  #Remove the diagonal parts
+	  sxz_var -= np.sum(s[:, 0:N] *  s[:, 2*N:3*N], axis=1)
+	  
+	  syz_var = np.sum(gt[:,1,2,:,:], axis=(-1,-2))
+	  syz_var += np.sum([fftconvolve(s[m, N:2*N], s[m, 2*N:3*N]) \
+	    for m in xrange(t_output.size)], axis=1)
+	  #Remove the diagonal parts
+	  syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
+	  np.seterr(**old_settings)  # reset to default
+	  
 	  localdata = OutData(t_output, sx_expectations, sy_expectations,\
 	    sz_expectations, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
 	      syz_var, self)
