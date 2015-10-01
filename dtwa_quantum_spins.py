@@ -893,7 +893,7 @@ class Dtwa_System:
 	return None
 
   def dtwa_spins_2ndorder(self, time_info, sampling):
-      comm=self.comm
+      comm = self.comm
       old_settings = np.seterr(all='ignore') #Prevent overflow warnings
       N = self.latsize
       (t_init, n_cycles, n_steps) = time_info
@@ -951,7 +951,7 @@ class Dtwa_System:
 
       for runcount in xrange(0, nt_loc, 1):
 	  random.seed(local_seeds[runcount])
-	  sx_init = np.ones(N, dtype="float128")
+	  sx_init = np.ones(N)
 	  if sampling == "spr":
 	    #According to Schachenmayer, the wigner function of the quantum
 	    #state generates the below initial conditions classically
@@ -975,7 +975,7 @@ class Dtwa_System:
 	    pass
 	  
 	  # Set initial correlations to 0.
-	  s_init_corrs = np.zeros(9*N*N, dtype="float128")
+	  s_init_corrs = np.zeros(9*N*N)
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
@@ -1005,6 +1005,7 @@ class Dtwa_System:
 	    dhwdt_abs2 = np.square(dhwdt) 
 	    list_of_dhwdt_abs2.extend(dhwdt_abs2)
 	  
+	  s = np.array(s, dtype="float128")#Widen memory to reduce overflows
 	  #Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
 	  #wigner func at t_output values LOCALLY for each initcond and
 	  #store them
