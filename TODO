@@ -1,5 +1,5 @@
 In the params and dtwa classes:
 1. Remove the file output code as well as the filenames from params. Let the user do it
-2. Toggle the output of observables with option "observable_out" in dtwa class
-3. Toggle the output of all the spins aggregated at all times with option "full_output" in dtwa class
-4. Let the final output be a tuple of dictionary (observables) and matrix of spins
+2. Let the final output be a matrix of spins instead of observables. Let the user calculate what he wants and distribute the memory via multiple MPI communicators.
+3. Wrangle open systems into the code
+4. Find a way for the user to put in his own sampling schemes, defaulting to the ones already in code.
