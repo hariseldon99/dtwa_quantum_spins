@@ -8,8 +8,8 @@
 #PBS -V
 #########################################################################
 ##Output file. Combine stdout and stderr into one
-#PBS -o stdout.dat
-#PBS -e stderr.dat
+#PBS -o /lustre/SCRATCH5/users/aroy/stdout.dat
+#PBS -e /lustre/SCRATCH5/users/aroy/stderr.dat
 #PBS -j oe 
 #########################################################################
 ##Number of nodes and procs per node.
