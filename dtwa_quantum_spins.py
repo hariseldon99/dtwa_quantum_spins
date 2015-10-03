@@ -950,7 +950,7 @@ class Dtwa_System:
 	  list_of_local_ijdata = []
 
       for runcount in xrange(0, nt_loc, 1):
-	  random.seed(local_seeds[runcount])
+	  random.seed(local_seeds[runcount] + self.seed_offset)
 	  sx_init = np.ones(N)
 	  if sampling == "spr":
 	    #According to Schachenmayer, the wigner function of the quantum
