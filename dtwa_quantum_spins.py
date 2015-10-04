@@ -739,7 +739,6 @@ class Dtwa_System:
   def dtwa_spins_1storder(self, time_info):
       comm = self.comm
       N = self.latsize
-      (t_init, n_cycles, n_steps) = time_info
       rank = comm.rank
       
       if rank == root and self.verbose:
@@ -747,12 +746,19 @@ class Dtwa_System:
 	  pprint(vars(self), depth=2)
       if rank == root and not self.verbose:
 	  pprint("# Starting run ...")
-      if self.omega == 0:
-	  t_final = t_init + n_cycles
+      if type(time_info) is tuple:
+	(t_init, n_cycles, n_steps) = time_info
+	if self.omega == 0:
+	    t_final = t_init + n_cycles
+	else:
+	    t_final = t_init + (n_cycles * (2.0* np.pi/self.omega))
+	dt = (t_final-t_init)/(n_steps-1.0)
+	t_output = np.arange(t_init, t_final, dt)
+      elif type(time_info) is list or np.ndarray:
+	t_output = time_info
       else:
-	  t_final = t_init + (n_cycles * (2.0* np.pi/self.omega))
-      dt = (t_final-t_init)/(n_steps-1.0)
-      t_output = np.arange(t_init, t_final, dt)
+	print("Please enter either a tuple or a list for the time interval") 
+	exit(0)
       #Let each process get its chunk of n_t by round robin
       nt_loc = 0
       iterator = rank
@@ -896,7 +902,6 @@ class Dtwa_System:
       comm = self.comm
       old_settings = np.seterr(all='ignore') #Prevent overflow warnings
       N = self.latsize
-      (t_init, n_cycles, n_steps) = time_info
       rank = comm.rank
       if rank == root and self.verbose:
 	  pprint("# Run parameters:")
@@ -910,12 +915,19 @@ class Dtwa_System:
 	  pprint(vars(out), depth=2)
       if rank == root and not self.verbose:
 	  pprint("# Starting run ...")
-      if self.omega == 0:
-	  t_final = t_init + n_cycles
+      if type(time_info) is tuple:
+	(t_init, n_cycles, n_steps) = time_info
+	if self.omega == 0:
+	    t_final = t_init + n_cycles
+	else:
+	    t_final = t_init + (n_cycles * (2.0* np.pi/self.omega))
+	dt = (t_final-t_init)/(n_steps-1.0)
+	t_output = np.arange(t_init, t_final, dt)
+      elif type(time_info) is list  or np.ndarray:
+	t_output = time_info
       else:
-	  t_final = t_init + (n_cycles * (2.0* np.pi/self.omega))
-      dt = (t_final-t_init)/(n_steps-1.0)
-      t_output = np.arange(t_init, t_final, dt)
+	print("Please enter either a tuple or a list for the time interval") 
+	exit(0)
       #Let each process get its chunk of n_t by round robin
       nt_loc = 0
       iterator = rank
@@ -1140,12 +1152,16 @@ class Dtwa_System:
        data = d.evolve(times, sampling="spr")
        
        Required parameters:
-       times 		= A 3-tuple (t0, t1, steps), where t0(1) is the 
-			  initial (final) time, and steps are the number
-			  of time steps that are in the output. Note that
-			  the integrator method and the actual step sizes
-			  are controlled internally by the integrator. 
-			  See the relevant docs for scipy.integrate.odeint.
+       times 		= Time information. There are 2 options: 
+			  1. A 3-tuple (t0, t1, steps), where t0(1) is the 
+			      initial (final) time, and steps are the number
+			      of time steps that are in the output. 
+			  2. A list or numpy array with the times entered
+			      manually.
+			      
+			      Note that the integrator method and the actual step sizes
+			      are controlled internally by the integrator. 
+			      See the relevant docs for scipy.integrate.odeint.
 			  
        Optional parameters:
        sampling		= The sampling scheme used. The choices are 
