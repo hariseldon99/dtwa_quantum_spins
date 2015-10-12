@@ -80,7 +80,7 @@ def weyl_hamilt(s,times,param):
     param.hy * np.sum(s[:, N:2*N]) + param.hz * np.sum(s[:, 2*N:3*N]))
   return -hw
 
-def func_1storder(s, t, param):
+def func_dtwa(s, t, param):
     """
     The RHS of general case, per Schachemmayer eq A2
     """
@@ -98,7 +98,7 @@ def func_1storder(s, t, param):
     dszdt = s[0:N] * jsy - s[N:2*N] * jsx
     return np.concatenate((dsxdt, dsydt, dszdt))
 
-def jac_1storder(s, t, param):
+def jac_dtwa(s, t, param):
     """
     Jacobian of the general case. First order.
     This is given by 9 NXN submatrices:
@@ -137,7 +137,7 @@ def jac_1storder(s, t, param):
       param.hx + param.jy * hash_jsx
     return full_jacobian
 
-def func_2ndorder(s, t, param):
+def func_dtwa_bbgky(s, t, param):
     """
     The RHS of general case, second order correction, per Lorenzo
     "J" is the J_{ij} hopping matrix
@@ -165,7 +165,7 @@ def func_2ndorder(s, t, param):
       param.jmat)/param.norm
     hvec_dressed = htensor + np.einsum("llgm->lm", Mtensor)
     dtensor = gtensor + np.einsum("am,bn", stensor, stensor)
-    dsdt_1 = func_1storder(sview[0:3*N], t, param).reshape(3, N)
+    dsdt_1 = func_dtwa(sview[0:3*N], t, param).reshape(3, N)
     dsdt = dsdt_1 - \
       2.0 * np.einsum("bcmm,b,abc->am", Gtensor, param.jvec, eijk)
 
@@ -188,7 +188,7 @@ def func_2ndorder(s, t, param):
     #Flatten it before returning
     return np.concatenate((dsdt.flatten(), 2.0 * dgdt.flatten()))
  
-def jac_2ndorder(s, t, param):
+def jac_dtwa_bbgky(s, t, param):
   """
   Jacobian of the general case. Second order.
   """
@@ -213,7 +213,7 @@ def jac_2ndorder(s, t, param):
   full_jacobian = np.zeros(shape=(fullsize_2ndorder, fullsize_2ndorder))
   
   #J00 subblock
-  full_jacobian[0:3*N, 0:3*N] = jac_1storder(s, t, param)
+  full_jacobian[0:3*N, 0:3*N] = jac_dtwa(s, t, param)
   
   #J01 subblock. Precalculated
   full_jacobian[0:3*N, 3*N:] = param.dsdotdg  
@@ -444,74 +444,6 @@ class OutData:
         np.savetxt(self.output_syzvar, \
           np.vstack((self.t_output, self.syzvar)).T, delimiter=' ')
 
-class OutData_ij:
-    """
-    Class to store ij output data
-    The gij is a numpy array of 3X3 gij matrices at multiple times
-    """
-    def __init__(self, t, sites, sxi, syi, szi, sxj, syj, szj, sy_iplusk,\
-      syy_k, gij=None):
-	self.times = t
-        self.sites = sites
-        self.sxi, self.syi, self.szi = sxi, syi, szi
-        self.sxj, self.syj, self.szj = sxj, syj, szj
-        #Output formatting dictionaries
-	self.sitespinsdict = {"time": t,\
-                "sxi": self.sxi.view(),\
-		"syi": self.syi.view(),\
-		"szi": self.szi.view(),\
-		"sxj": self.sxj.view(),\
-		"syj": self.syj.view(),\
-		"szj": self.szj.view()}
-	self.sy_iplusk = sy_iplusk
-	self.syy_k = syy_k
-        if gij is not None:
-	  self.gij = gij
-	  v = self.gij.view()
-	  self.sitecorrdict = {"time": t,\
-                  "gxxij": v[:, 0, 0],\
-		  "gxyij": v[:, 0, 1],\
-		  "gxzij": v[:, 0, 2],\
-		  "gyxij": v[:, 1, 0],\
-		  "gyyij": v[:, 1, 1],\
-		  "gyzij": v[:, 1, 2],\
-		  "gzxij": v[:, 2, 0],\
-		  "gzyij": v[:, 2, 1],\
-		  "gzzij": v[:, 2, 2]}
-
-    def normalize_data(self, w_totals):
-        self.sitespinsdict['sxi'] = self.sitespinsdict['sxi']/(w_totals)
-        self.sitespinsdict['syi'] = self.sitespinsdict['syi']/(w_totals)
-        self.sitespinsdict['szi'] = self.sitespinsdict['szi']/(w_totals)
-        self.sitespinsdict['sxj'] = self.sitespinsdict['sxj']/(w_totals)
-        self.sitespinsdict['syj'] = self.sitespinsdict['syj']/(w_totals)
-        self.sitespinsdict['szj'] = self.sitespinsdict['szj']/(w_totals)
-        #Normalize the spatial correlations:
-        self.sy_iplusk = self.sy_iplusk/(w_totals)
-        self.syy_k = self.syy_k/(w_totals)
-        self.syy_k -= np.array([self.sy_iplusk[i] *\
-	  self.sitespinsdict['syi'][i] for i in xrange(self.times.size)]) 
-        
-        if hasattr(self, 'sitecorrdict'):
-	  for key in self.sitecorrdict.iterkeys():
-	    if key is not "time":
-	      self.sitecorrdict[key] =  self.sitecorrdict[key]/(w_totals)
-	      
-    def dump_data(self):
-      print("\n\n Tabular dump of site data:\n\n")
-      print("\n Note that, in the first order case,") 
-      print("the 'gij' columns actually print sijs,")
-      print("which are s(..)i * s(..)j\n\n")
-      print("Sites chosen:", self.sites)
-      print("\n")
-      print(tabulate(self.sitespinsdict, headers="keys", floatfmt=".6f" ))
-      print("Spatial correlations from site i = \n", self.sites[0])
-      print(np.vstack((self.times,self.syy_k.T)).T)
-      
-      if hasattr(self, 'sitecorrdict'):
-	print("    ")
-	print(tabulate(self.sitecorrdict, headers="keys", floatfmt=".6f"))
-
 class Dtwa_System:
   """
     Class that creates the dTWA system.
@@ -527,16 +459,16 @@ class Dtwa_System:
   """
 
   def __init__(self, params, mpicomm, n_t=2000, file_output=True,\
-			  seed_offset=0,  s_order=False, jac=False,\
-			    verbose=True, sitedata=False):
+			  seed_offset=0,  bbgky=False, jac=False,\
+			    verbose=True):
     """
     Initiates an instance of the Dtwa_System class. Copies parameters
     over from an instance of ParamData and stores precalculated objects .
     
        Usage:
        d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000,\ 
-			file_output=True, s_order=False, jac=False,\ 
-					verbose=True, sitedata=False)
+			file_output=True, bbgky=False, jac=False,\ 
+					verbose=True)
        
        Parameters:
        Paramdata 	= An instance of the class "ParamData". 
@@ -557,7 +489,7 @@ class Dtwa_System:
 			  separate dTWA objects have uniquely random initial 
 			  states by changing seed_offset.
 			  Defaults to 0.
-       s_order          = Boolean for choosing the second order method,
+       bbgky          = Boolean for choosing the second order method,
 			  i.e. with BBGKY corrections on regular dTWA.
 			  Defaults to False, leading to the first order
 			  i.e. regular dTWA.
@@ -577,14 +509,10 @@ class Dtwa_System:
 			  well as the output of the time derivative
 			  of the Weyl symbol of the Hamiltonian that you
 			  have provided via the 'hopmat' and other input
-			  in ParamData. Defaults to 'False'.
-       sitedata         = Boolean for choosing to dump to stdout
-			  the observables evaluated at the midpoint 
-			  of the lattice and its nearest neighbour. 
-			  Defaults to 'False'. 			  
+			  in ParamData. Defaults to 'False'.			  
 			  
       Return value: 
-      An object that stores all the parameters above. If s_order
+      An object that stores all the parameters above. If bbgky
       and 'jac' are set to 'True', then this object includes 
       precalculated data for those parts of the second order 
       jacobian that are time-independent. This is named 'dsdotdg'.
@@ -596,14 +524,13 @@ class Dtwa_System:
     self.file_output = file_output
     self.comm=mpicomm
     self.seed_offset = seed_offset
-    self.s_order = s_order
+    self.bbgky = bbgky
     #Booleans for verbosity and for calculating site data
     self.verbose = verbose
-    self.sitedata = sitedata
     N = params.latsize
     
     #Only computes these if you want 2nd order
-    if self.s_order and self.jac:
+    if self.bbgky and self.jac:
       #Below are the constant subblocks of the 2nd order Jacobian
       #The 00 subblock is the first order Jacobian in func below
       #The entire 01 subblock, fully time independent (ds_dot/dg):
@@ -673,68 +600,6 @@ class Dtwa_System:
 	      syzvar_totals, self)
       else:
 	return None
-
-  def sum_reduce_site_data(self, datalist_loc, t, sites, mpcomm):
-      """
-      Does the parallel sum reduction of site data
-      """
-      sxi_locsum = np.sum(data.sxi for data in datalist_loc)
-      syi_locsum = np.sum(data.syi for data in datalist_loc)
-      szi_locsum = np.sum(data.szi for data in datalist_loc)
-      sxj_locsum = np.sum(data.sxj for data in datalist_loc)
-      syj_locsum = np.sum(data.syj for data in datalist_loc)
-      szj_locsum = np.sum(data.szj for data in datalist_loc)
-      sy_iplusk_locsum = np.sum(data.sy_iplusk for data in datalist_loc)
-      syy_k_locsum = np.sum(data.syy_k for data in datalist_loc)
-      
-      try: #This is to take care of the case when gij = None
-	gijs_locsum = np.sum(data.gij for data in datalist_loc)
-      except AttributeError:
-	gijs_locsum = None
-      
-      sxi_totals = np.zeros_like(sxi_locsum) if mpcomm.rank == root\
-	else None
-      syi_totals = np.zeros_like(syi_locsum) if mpcomm.rank == root\
-	else None
-      szi_totals = np.zeros_like(szi_locsum) if mpcomm.rank == root\
-	else None
-      sxj_totals = np.zeros_like(sxj_locsum) if mpcomm.rank == root\
-	else None
-      syj_totals = np.zeros_like(syj_locsum) if mpcomm.rank == root \
-	else None
-      szj_totals = np.zeros_like(szj_locsum) if mpcomm.rank == root \
-	else None
-      sy_iplusk_totals = np.zeros_like(sy_iplusk_locsum) \
-	if mpcomm.rank == root else None
-      syy_k_totals = np.zeros_like(syy_k_locsum) \
-	if mpcomm.rank == root else None
-      
-      gijs_totals = np.zeros_like(gijs_locsum) if mpcomm.rank == root \
-	else None
-      
-      #To prevent conflicts with other comms
-      duplicate_comm = Intracomm(mpcomm)
-      #Broadcast these reductions to root
-      sxi_totals = duplicate_comm.reduce(sxi_locsum, root=root)
-      syi_totals = duplicate_comm.reduce(syi_locsum, root=root)
-      szi_totals = duplicate_comm.reduce(szi_locsum, root=root)
-      sxj_totals = duplicate_comm.reduce(sxj_locsum, root=root)
-      syj_totals = duplicate_comm.reduce(syj_locsum, root=root)
-      szj_totals = duplicate_comm.reduce(szj_locsum, root=root)
-      sy_iplusk_totals = duplicate_comm.reduce(sy_iplusk_locsum,root=root)
-      syy_k_totals = duplicate_comm.reduce(syy_k_locsum, root=root)
-      
-      if gijs_locsum is not None:
-	gijs_totals = duplicate_comm.reduce(gijs_locsum, root=root)
-      else:
-	gijs_totals = None
-      
-      if mpcomm.rank == root:
-	return OutData_ij(t, sites, sxi_totals, syi_totals, \
-	  szi_totals, sxj_totals, syj_totals, szj_totals, \
-	    sy_iplusk_totals, syy_k_totals, gijs_totals)
-      else:
-	return None
       
   def dtwa_spins_1storder(self, time_info):
       comm = self.comm
@@ -786,9 +651,6 @@ class Dtwa_System:
 
       list_of_local_data = []
       
-      if self.sitedata:
-	list_of_local_ijdata = []
-
       for runcount in xrange(0, nt_loc, 1):
 	  random.seed(local_seeds[runcount] + self.seed_offset)
 	  #According to Schachenmayer, the wigner function of the quantum
@@ -802,17 +664,17 @@ class Dtwa_System:
 	  s_init = np.concatenate((sx_init, sy_init, sz_init))
 	  if self.verbose:
 	    if self.jac:
-	      s, info = odeint(func_1storder, s_init, t_output,\
-		args=(self,), Dfun=jac_1storder, full_output=True)
+	      s, info = odeint(func_dtwa, s_init, t_output,\
+		args=(self,), Dfun=jac_dtwa, full_output=True)
 	    else:
-	      s, info = odeint(func_1storder, s_init, t_output,\
+	      s, info = odeint(func_dtwa, s_init, t_output,\
 		args=(self,), Dfun=None, full_output=True)
 	  else:
 	    if self.jac:
-	      s = odeint(func_1storder, s_init, t_output, args=(self,),\
-		Dfun=jac_1storder)
+	      s = odeint(func_dtwa, s_init, t_output, args=(self,),\
+		Dfun=jac_dtwa)
 	    else:
-	      s = odeint(func_1storder, s_init, t_output, args=(self,),\
+	      s = odeint(func_dtwa, s_init, t_output, args=(self,),\
 		Dfun=None)
 	  #Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
 	  #wigner func at t_output values LOCALLY for each initcond and
@@ -821,32 +683,6 @@ class Dtwa_System:
 	  sy_expectations = np.sum(s[:, N:2*N], axis=1) 
 	  sz_expectations = np.sum(s[:, 2*N:3*N], axis=1) 
 	  
-	  if self.sitedata:
-	      (i, j) = self.tpnt_sites
-	      sxi, syi, szi = s[:, i], s[:, i+N], s[:, i+2*N]
-	      sxj, syj, szj = s[:, j], s[:, j+N], s[:, j+2*N]
-	      sxxij, syyij, szzij = sxi * sxj, syi * syj, szi * szj
-	      sxyij, sxzij, syzij = sxi * syj, sxi * szj, syi * szj
-	      syxij, szxij, szyij = syi * sxj, szi * sxj, szi * syj
-	      gij = np.array([sxxij, sxyij, sxzij, syxij, syyij, syzij,\
-		szxij, szyij, szzij]).T.reshape(t_output.size,3,3)
-	      sxi, syi, szi = sxi , syi , \
-		szi 
-	      sxj, syj, szj = sxj , syj , \
-		szj 
-	      #Calculate Spatial Correlations
-	      sy_iplusk = s[:, N:2*N][:,i:] #This is a matrix
-	      syy_k = np.array([sy_iplusk[t] * syi[t] \
-		for t in xrange(t_output.size)])# This is also a matrix
-	      
-	      localdataij = OutData_ij(t_output, self.tpnt_sites, \
-							sxi, syi, szi,\
-							  sxj, syj, szj,\
-							      sy_iplusk,\
-								syy_k,\
-								      gij)
-	      list_of_local_ijdata.append(localdataij)
-	      
 	  #Quantum spin variance maps to the classical expression
 	  # (1/N) + (1/N^2)\sum_{i\neq j} S^x_i S^x_j - <S^x>^2 and
 	  # (1/N) + (1/N^2)\sum_{i\neq j} S^y_i S^z_j
@@ -873,13 +709,6 @@ class Dtwa_System:
       #calculated expectations at each time to root
       outdat = \
 	self.sum_reduce_all_data(list_of_local_data, t_output, comm)    
-      if self.sitedata:
-	sij = self.sum_reduce_site_data(list_of_local_ijdata,\
-					t_output, self.tpnt_sites, comm)
-	if rank == root:
-	  sij.normalize_data(self.n_t)
-	  if self.file_output:
-	    sij.dump_data()
 	  
       if rank == root:
 	  #Dump to file
@@ -957,9 +786,6 @@ class Dtwa_System:
       
       if self.verbose:
 	list_of_dhwdt_abs2 = []
-	
-      if self.sitedata:
-	  list_of_local_ijdata = []
 
       for runcount in xrange(0, nt_loc, 1):
 	  random.seed(local_seeds[runcount] + self.seed_offset)
@@ -992,20 +818,20 @@ class Dtwa_System:
 	  with stdout_redirected():
 	    if self.verbose:
 	      if self.jac:
-		s, info = odeint(func_2ndorder, \
+		s, info = odeint(func_dtwa_bbgky, \
 		  np.concatenate((s_init_spins, s_init_corrs)), t_output, \
-		    args=(self,), Dfun=jac_2ndorder, full_output=True)
+		    args=(self,), Dfun=jac_dtwa_bbgky, full_output=True)
 	      else:
-		s, info = odeint(func_2ndorder, \
+		s, info = odeint(func_dtwa_bbgky, \
 		  np.concatenate((s_init_spins, s_init_corrs)),t_output, \
 		    args=(self,), Dfun=None, full_output=True)
 	    else:
 	      if self.jac:
-		s = odeint(func_2ndorder, \
+		s = odeint(func_dtwa_bbgky, \
 		  np.concatenate((s_init_spins, s_init_corrs)), \
-		    t_output, args=(self,), Dfun=jac_2ndorder)
+		    t_output, args=(self,), Dfun=jac_dtwa_bbgky)
 	      else:
-		s = odeint(func_2ndorder, \
+		s = odeint(func_dtwa_bbgky, \
 		  np.concatenate((s_init_spins, s_init_corrs)), t_output, \
 		    args=(self,), Dfun=None)
 	  
@@ -1024,29 +850,6 @@ class Dtwa_System:
 	  sx_expectations = np.sum(s[:, 0:N], axis=1) 
 	  sy_expectations = np.sum(s[:, N:2*N], axis=1) 
 	  sz_expectations = np.sum(s[:, 2*N:3*N], axis=1) 
-
-	  if self.sitedata:
-	      (i, j) = self.tpnt_sites
-	      sxi, syi, szi = s[:, i], s[:, i+N], s[:, i+2*N]
-	      sxi, syi, szi = sxi , syi ,\
-		szi 
-	      sxj, syj, szj = s[:, j], s[:, j+N], s[:, j+2*N]
-	      sxj, syj, szj = sxj , syj ,\
-		szj 
-	      sview = s.view()
-	      gij = sview[:,3*N:].reshape(\
-		t_output.size,3, 3, N, N)[:, :, :, i, j] 
-	      #Calculate Spatial Correlations
-	      sy_iplusk = s[:, N:2*N][:,i:] #This is a matrix
-	      syy_k = np.array([sy_iplusk[t] * syi[t] \
-		for t in xrange(t_output.size)])# This is also a matrix
-	      localdataij = OutData_ij(t_output, self.tpnt_sites, \
-							sxi, syi, szi,\
-							  sxj, syj, szj,\
-							      sy_iplusk,\
-								syy_k,\
-								      gij)
-	      list_of_local_ijdata.append(localdataij)
 		  
 	  #svec  is the tensor s^l_\mu
 	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
@@ -1096,13 +899,6 @@ class Dtwa_System:
 	dhwdt_abs2_locsum = np.sum(list_of_dhwdt_abs2, axis=0)
 	dhwdt_abs2_totals = np.zeros_like(dhwdt_abs2_locsum)\
 	  if rank == root else None
-
-      if self.sitedata:
-	sij = self.sum_reduce_site_data(list_of_local_ijdata, t_output,\
-	  self.tpnt_sites, comm)
-	if rank == root:
-	  sij.normalize_data(self.n_t)
-	  sij.dump_data()
 
       if self.verbose:
 	temp_comm = Intracomm(comm)
@@ -1182,7 +978,7 @@ class Dtwa_System:
 	3. All correlation sums (xx, yy, zz, xy, xz and yz).
     """
     
-    if self.s_order:
+    if self.bbgky:
       return self.dtwa_spins_2ndorder(time_info, sampling)
     else:
       return self.dtwa_spins_1storder(time_info)
