@@ -490,7 +490,7 @@ class Dtwa_System:
 			  separate dTWA objects have uniquely random initial 
 			  states by changing seed_offset.
 			  Defaults to 0.
-       bbgky          = Boolean for choosing the second order method,
+       bbgky          =   Boolean for choosing the BBGKY evolution,
 			  i.e. with BBGKY corrections on regular dTWA.
 			  Defaults to False, leading to the first order
 			  i.e. regular dTWA.
@@ -653,7 +653,7 @@ class Dtwa_System:
       list_of_local_data = []
       
       for runcount in xrange(0, nt_loc, 1):
-	  random.seed(local_seeds[runcount] + self.seed_offset)
+	  np.random.seed(local_seeds[runcount] + self.seed_offset)
 	  #According to Schachenmayer, the wigner function of the quantum
 	  #state generates the below initial conditions classically
 	  sx_init = np.ones(N)
@@ -790,6 +790,7 @@ class Dtwa_System:
 
       for runcount in xrange(0, nt_loc, 1):
 	  random.seed(local_seeds[runcount] + self.seed_offset)
+	  np.random.seed(local_seeds[runcount] + self.seed_offset)
 	  sx_init = np.ones(N)
 	  if sampling == "spr":
 	    #According to Schachenmayer, the wigner function of the quantum
@@ -968,6 +969,11 @@ class Dtwa_System:
 			  3."all"  : The prescription obtained from the 
 				     logical union of both the phase point
 				     operators above.
+			  Note that this is implemented only if the 'bbgky' 
+			  option in the 'Dtwa_System' object is set to True.
+			  If not (ie if you're running pure dtwa), then only
+			  "spr" sampling is implemented no matter what this
+			  option is set to.
 
       Return value: 
       A dictionary that contains the times, and all observables.
