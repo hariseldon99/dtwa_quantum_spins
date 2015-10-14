@@ -1,8 +1,13 @@
 #!/usr/bin/env python
+"""
+This example scripts computes the hopping matrix of a 2D lattice with
+power law (alpha) decay in the hopping amplitude
+"""
 import numpy as np
 import sys
+import csv
 from mpi4py import MPI
-sys.path.append("/home/daneel/dtwa_quantum_spins/")
+sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/")
 import dtwa_quantum_spins as dtwa
   
 def run_dtwa():
@@ -15,7 +20,7 @@ def run_dtwa():
   alpha = 3.0
   jx, jy, jz = -0.5, -0.5, 0.0
   hx, hy, hz = 0.0, 0.0, 0.0
-  niter = 100000
+  niter = 2
  
   for l in lattice_shapes:
     
@@ -35,21 +40,8 @@ def run_dtwa():
     p = dtwa.ParamData(hopmat=(jmat+jmat.T),norm=1.0, latsize=size,\
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
-    p.output_magx = "sx_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_magy = "sy_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_magz = "sz_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-  
-    p.output_sxvar = "sxvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_syvar = "syvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_szvar = "szvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-
-    p.output_sxyvar = "sxyvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_sxzvar = "sxzvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    p.output_syzvar = "syzvar_time_beta_"+str(alpha)+"_N_"+str(l)+"_2ndorder.txt"
-    
     #Initiate the DTWA system with the parameters and niter
-    d = dtwa.Dtwa_System(p, comm, n_t=niter, file_output=True, \
-		      bbgky=True, verbose=True)
+    d = dtwa.Dtwa_System(p, comm, n_t=niter, bbgky=True, verbose=True)
 
     #Prepare the times
     t0 = 0.0
@@ -57,6 +49,49 @@ def run_dtwa():
     nsteps = 200
 
     data = d.evolve((t0, ncyc, nsteps))
+    
+    if rank == 0:
+      #Prepare the output files. One for each observable
+      append_all = "_time_alpha_" + str(alpha) + "_N_"+str(l)+"_2ndorder.txt"
+      
+      outfile_magx = "sx" + append_all
+      outfile_magy = "sy" + append_all
+      outfile_magz = "sz" + append_all
+    
+      outfile_sxvar = "sxvar" + append_all
+      outfile_syvar = "syvar" + append_all
+      outfile_szvar = "szvar" + append_all
+
+      outfile_sxyvar = "sxyvar" + append_all
+      outfile_sxzvar = "sxzvar" + append_all
+      outfile_syzvar = "syzvar" + append_all
+      
+      #Dump each observable to a separate file
+      np.savetxt(outfile_magx, \
+	np.vstack((data.t_output, data.sx)).T, delimiter=' ')
+      np.savetxt(outfile_magy, \
+	np.vstack((data.t_output, data.sy)).T, delimiter=' ')
+      np.savetxt(outfile_magz, \
+	np.vstack((data.t_output, data.sz)).T, delimiter=' ')
+      np.savetxt(outfile_sxvar, \
+	np.vstack((data.t_output, data.sxvar)).T, delimiter=' ')
+      np.savetxt(outfile_syvar, \
+	np.vstack((data.t_output, data.syvar)).T, delimiter=' ')
+      np.savetxt(outfile_szvar, \
+	np.vstack((data.t_output, data.szvar)).T, delimiter=' ')
+      np.savetxt(outfile_sxyvar, \
+	np.vstack((data.t_output, data.sxyvar)).T, delimiter=' ')
+      np.savetxt(outfile_sxzvar, \
+	np.vstack((data.t_output, data.sxzvar)).T, delimiter=' ')
+      np.savetxt(outfile_syzvar, \
+	np.vstack((data.t_output, data.syzvar)).T, delimiter=' ')
+      
+      #Alternatively, convert output to discionary and dump to single file
+      ##Either as a csv file
+      w = csv.writer(open("output.csv", "w"))
+      for key, val in vars(data).items():
+	w.writerow([key, val])
+    ##Or any other way you want :)
 
 if __name__ == '__main__':
   run_dtwa()

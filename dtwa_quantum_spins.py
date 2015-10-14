@@ -14,7 +14,7 @@
     *1. The initial state is currently hard coded to be the classical ground
     *    state
     *2. Primary references are
-    *	 PRM: arXiv:1510.03768
+    *	PRM: arXiv:1510.03768
     *   Anatoli: Ann. Phys 325 (2010) 1790-1852
     *   Mauritz: arXiv:1209.3697
     *   Schachenmayer: arXiv:1408.4441
@@ -25,7 +25,8 @@ from __future__ import division, print_function
 from mpi4py import MPI
 from reductions import Intracomm
 from redirect_stdout import stdout_redirected
-
+import operator as op
+from itertools import starmap
 import sys
 import copy
 import random
@@ -331,57 +332,21 @@ class ParamData:
        j(x,y,z) =  The values of the bare hopping i.e, the terms that scale
 		   each \sigma^{xyz}_i\sigma^{xyz}_j. 
 		   Defaults to (0,0,1). Set all to unity if so desired.
-      
-       Additional parameters:
-       output_mag(x,y,z)  = Output file(s) for the (x,y,z) magnetization. 
-			   Internal defaults
-       output_s(x,y,z)var = Output file(s) for the (x,y,z) fluctuations in
-			   magnetization. Internal defaults
-       output_s(a)var	  = Output file(s) for the (a) correlations summed 
-			   over all sites. Internal defaults. here, a can 
-			   be (xy,xz,yz)
 			   
        Return value: 
        An object that stores all the parameters above. 
       """
-      
-      #Default Output file names. Each file dumps a different observable
-      self.output_magx = "sx_outfile.txt"
-      self.output_magy = "sy_outfile.txt"
-      self.output_magz = "sz_outfile.txt"
-    
-      self.output_sxvar = "sxvar_outfile.txt"
-      self.output_syvar = "syvar_outfile.txt"
-      self.output_szvar = "szvar_outfile.txt"
 
-      self.output_sxyvar = "sxyvar_outfile.txt"
-      self.output_sxzvar = "sxzvar_outfile.txt"
-      self.output_syzvar = "syzvar_outfile.txt"
-    
-      #Whether to normalize with Kac norm or not
       self.norm = norm
-      
       self.latsize = latsize
-      
-      self.h0 = h0 # Drive amplitude
-      self.omega = omega #Drive frequency
-      self.hx = hx #x transverse field
-      self.hy = hy #y transverse field
-      self.hz = hz #z transverse field
-      self.jx = jx #x hopping
-      self.jy = jy #y hopping
-      self.jz = jz #z hopping
-    
-      self.jvec = np.array([jx, jy, jz])
-      self.hvec = np.array([hx, hy, hz])
+      self.h0, self.omega = h0 , omega # Drive ampl and freq
+      self.hx, self.hy, self.hz  = hx , hy, hz#x transverse field
+      self.jx, self.jy, self.jz = jx, jy, jz #hopping
+      self.jvec, self.hvec = np.array([jx, jy, jz]), np.array([hx, hy, hz])
       N = self.latsize
       self.fullsize_2ndorder = 3 * N + 9 * N**2
       self.deltamn = np.eye(N)
-      # These are the lattice  sites for two point density matrix calc.
-      self.tpnt_sites = (np.floor(N/2), np.floor(N/2)+2) 
       if(hopmat == None): #Use the default hopping matrix
-	self.periodic_boundary_conditions = True
-	self.open_boundary_conditions = False
 	#This is the dense Jmn hopping matrix with inverse 
 	#power law decay for periodic boundary conditions.
 	J = dia_matrix((N, N))
@@ -399,7 +364,7 @@ class ParamData:
 	  self.jmat = hopmat  
 
 class OutData:
-    """Class to store output data in a dictionary"""
+    """Class to store output data in this object"""
     def __init__(self, t, sx, sy, sz, sxx, syy, szz, sxy, sxz, syz,\
       params):
         self.t_output = t
@@ -409,42 +374,22 @@ class OutData:
         self.__dict__.update(params.__dict__)
 
     def normalize_data(self, w_totals, lsize):
-        self.sx = self.sx/(w_totals * lsize)
-        self.sy = self.sy/(w_totals * lsize)
-        self.sz = self.sz/(w_totals * lsize)
-        self.sxvar = (1/lsize) + (self.sxvar/(w_totals * lsize * lsize))
-        self.sxvar = self.sxvar - (self.sx)**2
-        self.syvar = (1/lsize) + (self.syvar/(w_totals * lsize * lsize))
-        self.syvar = self.syvar - (self.sy)**2
-        self.szvar = (1/lsize) + (self.szvar/(w_totals * lsize * lsize))
-        self.szvar = self.szvar - (self.sz)**2
-        self.sxyvar = (self.sxyvar/(w_totals * lsize * lsize))
-        self.sxyvar = self.sxyvar - (self.sx * self.sy)
-        self.sxzvar = (self.sxzvar/(w_totals * lsize * lsize))
-        self.sxzvar = self.sxzvar - (self.sx * self.sz)
-        self.syzvar = (self.syzvar/(w_totals * lsize * lsize))
-        self.syzvar = self.syzvar - (self.sy * self.sz)
-
-    def dump_data(self):
-        np.savetxt(self.output_magx, \
-	  np.vstack((self.t_output, self.sx)).T, delimiter=' ')
-        np.savetxt(self.output_magy, \
-	  np.vstack((self.t_output, self.sy)).T, delimiter=' ')
-        np.savetxt(self.output_magz, \
-	  np.vstack((self.t_output, self.sz)).T, delimiter=' ')
-        np.savetxt(self.output_sxvar, \
-          np.vstack((self.t_output, self.sxvar)).T, delimiter=' ')
-        np.savetxt(self.output_syvar, \
-          np.vstack((self.t_output, self.syvar)).T, delimiter=' ')
-        np.savetxt(self.output_szvar, \
-          np.vstack((self.t_output, self.szvar)).T, delimiter=' ')
-        np.savetxt(self.output_sxyvar, \
-          np.vstack((self.t_output, self.sxyvar)).T, delimiter=' ')
-        np.savetxt(self.output_sxzvar, \
-          np.vstack((self.t_output, self.sxzvar)).T, delimiter=' ')
-        np.savetxt(self.output_syzvar, \
-          np.vstack((self.t_output, self.syzvar)).T, delimiter=' ')
-
+	n, m, t = w_totals * lsize, w_totals * lsize * lsize, (1/lsize)
+	(self.sx, self.sy, self.sz, self.sxvar, self.syvar, self.szvar, \
+	  self.sxyvar, self.sxzvar, self.syzvar) = \
+	    starmap(op.itruediv, zip((self.sx, self.sy, self.sz,\
+	      self.sxvar, self.syvar, self.szvar,\
+		self.sxyvar, self.sxzvar, self.syzvar), \
+		  (n, n, n, m, m, m, m, m, m)))
+	(self.sxvar, self.syvar, self.szvar) = starmap(op.iadd,\
+	  zip((self.sxvar, self.syvar, self.szvar),(t,t,t)))
+	(self.sxvar, self.syvar, self.szvar, \
+	  self.sxyvar, self.sxzvar, self.syzvar) = starmap(op.isub,\
+	  zip((self.sxvar, self.syvar, self.szvar, \
+	    self.sxyvar, self.sxzvar, self.syzvar),\
+	    ((self.sx)**2,(self.sy)**2,(self.sz)**2,\
+	      (self.sx * self.sy),(self.sx * self.sz),(self.sy * self.sz))))
+	
 class Dtwa_System:
   """
     Class that creates the dTWA system.
@@ -459,7 +404,7 @@ class Dtwa_System:
 	all the randomly sampled initial conditions.
   """
 
-  def __init__(self, params, mpicomm, n_t=2000, file_output=True,\
+  def __init__(self, params, mpicomm, n_t=2000,\
 			  seed_offset=0,  bbgky=False, jac=False,\
 			    verbose=True):
     """
@@ -468,7 +413,7 @@ class Dtwa_System:
     
        Usage:
        d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000,\ 
-			file_output=True, bbgky=False, jac=False,\ 
+			 bbgky=False, jac=False,\ 
 					verbose=True)
        
        Parameters:
@@ -480,8 +425,6 @@ class Dtwa_System:
        n_t		= Number of initial conditions to sample randomly 
 			  from the discreet spin phase space. Defaults to
 			  2000.
-       file_output      = Boolean for file output. Set to False if you 
-			  don't want data dumped to text files.			    
        seed_offset      = Offset in the seed. The initial conditions are 
 			  sampled randomly by each processor using the 
 			  random generator in python with unique seeds for
@@ -518,12 +461,11 @@ class Dtwa_System:
       precalculated data for those parts of the second order 
       jacobian that are time-independent. This is named 'dsdotdg'.
     """
-    
-    self.jac = jac
+
     self.__dict__.update(params.__dict__)
+    self.jac = jac
     self.n_t = n_t
-    self.file_output = file_output
-    self.comm=mpicomm
+    self.comm = mpicomm
     self.seed_offset = seed_offset
     self.bbgky = bbgky
     #Booleans for verbosity and for calculating site data
@@ -613,18 +555,17 @@ class Dtwa_System:
       if rank == root and not self.verbose:
 	  pprint("# Starting run ...")
       if type(time_info) is tuple:
-	(t_init, n_cycles, n_steps) = time_info
-	if self.omega == 0:
-	    t_final = t_init + n_cycles
-	else:
-	    t_final = t_init + (n_cycles * (2.0* np.pi/self.omega))
+	(t_init, t_final, n_steps) = time_info
 	dt = (t_final-t_init)/(n_steps-1.0)
 	t_output = np.arange(t_init, t_final, dt)
       elif type(time_info) is list or np.ndarray:
 	t_output = time_info
-      else:
+      elif rank == root:
 	print("Please enter either a tuple or a list for the time interval") 
 	exit(0)
+      else:
+	exit(0)
+	
       #Let each process get its chunk of n_t by round robin
       nt_loc = 0
       iterator = rank
@@ -680,9 +621,9 @@ class Dtwa_System:
 	  #Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
 	  #wigner func at t_output values LOCALLY for each initcond and
 	  #store them
-	  sx_expectations = np.sum(s[:, 0:N], axis=1) 
-	  sy_expectations = np.sum(s[:, N:2*N], axis=1) 
-	  sz_expectations = np.sum(s[:, 2*N:3*N], axis=1) 
+	  sx_expct = np.sum(s[:, 0:N], axis=1) 
+	  sy_expct = np.sum(s[:, N:2*N], axis=1) 
+	  sz_expct = np.sum(s[:, 2*N:3*N], axis=1) 
 	  
 	  #Quantum spin variance maps to the classical expression
 	  # (1/N) + (1/N^2)\sum_{i\neq j} S^x_i S^x_j - <S^x>^2 and
@@ -702,8 +643,8 @@ class Dtwa_System:
 	  syz_var =   np.sum([fftconvolve(s[m, N:2*N], \
 	    s[m, 2*N:3*N]) for m in xrange(t_output.size)], axis=1)
 
-	  localdata = OutData(t_output, sx_expectations, sy_expectations,\
-	    sz_expectations, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
+	  localdata = OutData(t_output, sx_expct, sy_expct,\
+	    sz_expct, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
 	      syz_var, self)
 	  list_of_local_data.append(localdata)
       #After loop above  sum reduce (don't forget to average) all locally
@@ -712,10 +653,7 @@ class Dtwa_System:
 	self.sum_reduce_all_data(list_of_local_data, t_output, comm)    
 	  
       if rank == root:
-	  #Dump to file
 	  outdat.normalize_data(self.n_t, N)
-	  if self.file_output:
-	    outdat.dump_data()
 	  if self.verbose:
 	      print("  ")
 	      print("Integration output info:")
@@ -746,18 +684,17 @@ class Dtwa_System:
       if rank == root and not self.verbose:
 	  pprint("# Starting run ...")
       if type(time_info) is tuple:
-	(t_init, n_cycles, n_steps) = time_info
-	if self.omega == 0:
-	    t_final = t_init + n_cycles
-	else:
-	    t_final = t_init + (n_cycles * (2.0* np.pi/self.omega))
+	(t_init, t_final, n_steps) = time_info
 	dt = (t_final-t_init)/(n_steps-1.0)
 	t_output = np.arange(t_init, t_final, dt)
       elif type(time_info) is list  or np.ndarray:
 	t_output = time_info
-      else:
+      elif rank == root:
 	print("Please enter either a tuple or a list for the time interval") 
 	exit(0)
+      else:
+	exit(0)
+
       #Let each process get its chunk of n_t by round robin
       nt_loc = 0
       iterator = rank
@@ -849,9 +786,9 @@ class Dtwa_System:
 	  #Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
 	  #wigner func at t_output values LOCALLY for each initcond and
 	  #store them
-	  sx_expectations = np.sum(s[:, 0:N], axis=1) 
-	  sy_expectations = np.sum(s[:, N:2*N], axis=1) 
-	  sz_expectations = np.sum(s[:, 2*N:3*N], axis=1) 
+	  sx_expct = np.sum(s[:, 0:N], axis=1) 
+	  sy_expct = np.sum(s[:, N:2*N], axis=1) 
+	  sz_expct = np.sum(s[:, 2*N:3*N], axis=1) 
 		  
 	  #svec  is the tensor s^l_\mu
 	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
@@ -889,8 +826,8 @@ class Dtwa_System:
 	  #Remove the diagonal parts
 	  syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
 	  	  
-	  localdata = OutData(t_output, sx_expectations, sy_expectations,\
-	    sz_expectations, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
+	  localdata = OutData(t_output, sx_expct, sy_expct,\
+	    sz_expct, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
 	      syz_var, self)
 	  list_of_local_data.append(localdata)
       #After loop above  sum reduce (don't forget to average) all locally
@@ -907,11 +844,8 @@ class Dtwa_System:
 	  dhwdt_abs2_totals = dhwdt_abs2_totals/(self.n_t * N * N)
 	  dhwdt_abs_totals = np.sqrt(dhwdt_abs2_totals)
 	
-      #Dump to file
       if rank == root:
 	  outdat.normalize_data(self.n_t, N)
-	  if self.file_output:
-	    outdat.dump_data()
 	  if self.verbose:
 	    print("t-deriv of Hamilt (abs square) with wigner avg: ")
 	    print("  ")
@@ -940,8 +874,7 @@ class Dtwa_System:
     instantiation of this class. After the integration is complete, each 
     process computes site observables for each trajectory, and used
     MPI_Reduce to aggregate the sum to root. The root then returns the 
-    data as a dictionary, and, optionally (decided during instantiation),
-    dumps it all to files. An optional argument is the sampling scheme.
+    data as an object. An optional argument is the sampling scheme.
     
     
        Usage:
@@ -976,11 +909,14 @@ class Dtwa_System:
 			  option is set to.
 
       Return value: 
-      A dictionary that contains the times, and all observables.
-      This contains: 
-	1. The times, 
-	2. The single site observables (x,y and z), and 
-	3. All correlation sums (xx, yy, zz, xy, xz and yz).
+      An OutData object that contains:
+	1. The times, bound to the method t_output
+	2. The single site observables (x,y and z), 
+	   bound to the methods 'sx,sy,sz' respectively and 
+	3. All correlation sums (xx, yy, zz, xy, xz and yz), 
+	   bound to the methods 
+	   'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
+	   respectively
     """
     
     if self.bbgky:
@@ -995,5 +931,5 @@ if __name__ == '__main__':
     #Initiate the parameters in object
     p = ParamData(latsize=101, beta=1.0)
     #Initiate the DTWA system with the parameters and niter
-    d = Dtwa_System(p, comm, n_t=2000)
+    d = Dtwa_System(p, comm, n_t=20)
     data = d.evolve((0.0, 1.0, 1000))
