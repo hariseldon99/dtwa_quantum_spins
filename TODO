@@ -1,5 +1,4 @@
 In the params and dtwa classes:
 1. Remove the file output code as well as the filenames from params. Let the user do it.
 2. Let the final output be a matrix of spins at end time AND observables. Let the user calculate what he wants and distribute the memory via multiple MPI communicators.
-3. Wrangle open systems into the code
-4. Incorporate Lorenzo's code for the BBGKY function using Cython. His code is faster and better optimized.
+3. Incorporate Lorenzo's code for the BBGKY function using Cython. His code is faster and better optimized.

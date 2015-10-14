@@ -49,7 +49,7 @@ def run_dtwa():
     
     #Initiate the DTWA system with the parameters and niter
     d = dtwa.Dtwa_System(p, comm, n_t=niter, file_output=True, \
-		      s_order=True, verbose=True, sitedata=False)
+		      bbgky=True, verbose=True)
 
     #Prepare the times
     t0 = 0.0

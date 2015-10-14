@@ -14,7 +14,7 @@
     *1. The initial state is currently hard coded to be the classical ground
     *    state
     *2. Primary references are
-    *   PRM: arXiv:1510.03768
+    *	 PRM: arXiv:1510.03768
     *   Anatoli: Ann. Phys 325 (2010) 1790-1852
     *   Mauritz: arXiv:1209.3697
     *   Schachenmayer: arXiv:1408.4441
@@ -60,37 +60,6 @@ def drive(t, params):
     Returns the time-dependent drive h(t)
     """
     return params.h0 * np.cos(params.omega * t)
-
-def initconds(sampling, size, seed=0, bbgky=True):
-  """
-  Initiates a single sampled trajectory based on sampling scheme and seed
-  """
-  random.seed(seed)
-  if sampling == "spr": #According to Schachenmayer
-    sy_init = np.array([2.0 * random.randint(0,2) - 1.0 \
-      for i in xrange(size)])
-    sz_init = np.array([2.0 * random.randint(0,2) - 1.0 \
-      for i in xrange(size)])
-    #Set initial conditions for the dynamics locally to vector 
-    #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
-    #s^z,s^z,s^z, ...]
-    s_init_spins = np.concatenate((np.ones(size), sy_init, sz_init))
-  elif sampling == "1-0": #According to PRM
-    spin_choices = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
-    spins = np.array([random.choice(spin_choices) for i in xrange(size)])
-    s_init_spins = spins.T.flatten()
-  elif sampling == "all": #Logical union of the above two sampling schemes
-    spin_choices_spr = np.array([(1, 1,1),(1, 1,-1),(1, -1,1),(1, -1,-1)])
-    spin_choices_10 = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
-    spin_choices = np.concatenate((spin_choices_10, spin_choices_spr))
-    spins = np.array([random.choice(spin_choices) for i in xrange(size)])
-    s_init_spins = spins.T.flatten()
-  else:
-    pass
-  # Set initial correlations to 0 if bbgky is wanted
-  s_init_corrs = np.zeros(9*size*size) if bbgky else None
-  return s_init_spins, s_init_corrs
-
 
 def weyl_hamilt(s,times,param):
   """
@@ -633,7 +602,7 @@ class Dtwa_System:
       else:
 	return None
       
-  def dtwa_only(self, time_info, sampling):
+  def dtwa_only(self, time_info):
       comm = self.comm
       N = self.latsize
       rank = comm.rank
@@ -684,8 +653,16 @@ class Dtwa_System:
       list_of_local_data = []
       
       for runcount in xrange(0, nt_loc, 1):
-	  s_init = initconds(sampling, N, \
-	    local_seeds[runcount] + self.seed_offset, self.bbgky)
+	  random.seed(local_seeds[runcount] + self.seed_offset)
+	  #According to Schachenmayer, the wigner function of the quantum
+	  #state generates the below initial conditions classically
+	  sx_init = np.ones(N)
+	  sy_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+	  sz_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+	  #Set initial conditions for the dynamics locally to vector 
+	  #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
+	  #s^z,s^z,s^z, ...]
+	  s_init = np.concatenate((sx_init, sy_init, sz_init))
 	  if self.verbose:
 	    if self.jac:
 	      s, info = odeint(func_dtwa, s_init, t_output,\
@@ -812,9 +789,32 @@ class Dtwa_System:
 	list_of_dhwdt_abs2 = []
 
       for runcount in xrange(0, nt_loc, 1):
-	  s_init_spins, s_init_corrs = initconds(sampling, N, \
-	    local_seeds[runcount] + self.seed_offset, self.bbgky)
+	  random.seed(local_seeds[runcount] + self.seed_offset)
+	  sx_init = np.ones(N)
+	  if sampling == "spr":
+	    #According to Schachenmayer, the wigner function of the quantum
+	    #state generates the below initial conditions classically
+	    sy_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+	    sz_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+	    #Set initial conditions for the dynamics locally to vector 
+	    #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
+	    #s^z,s^z,s^z, ...]
+	    s_init_spins = np.concatenate((sx_init, sy_init, sz_init))
+	  elif sampling == "1-0":
+	    spin_choices = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
+	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
+	    s_init_spins = spins.T.flatten()
+	  elif sampling == "all":
+	    spin_choices_spr = np.array([(1, 1,1),(1, 1,-1),(1, -1,1),(1, -1,-1)])
+	    spin_choices_10 = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
+	    spin_choices = np.concatenate((spin_choices_10, spin_choices_spr))
+	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
+	    s_init_spins = spins.T.flatten()
+	  else:
+	    pass
 	  
+	  # Set initial correlations to 0.
+	  s_init_corrs = np.zeros(9*N*N)
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
@@ -980,7 +980,7 @@ class Dtwa_System:
     if self.bbgky:
       return self.dtwa_bbgky(time_info, sampling)
     else:
-      return self.dtwa_only(time_info, sampling)
+      return self.dtwa_only(time_info)
       
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
