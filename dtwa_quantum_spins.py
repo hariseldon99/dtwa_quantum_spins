@@ -14,6 +14,7 @@
     *1. The initial state is currently hard coded to be the classical ground
     *    state
     *2. Primary references are
+    *   PRM: arXiv:1510.03768
     *   Anatoli: Ann. Phys 325 (2010) 1790-1852
     *   Mauritz: arXiv:1209.3697
     *   Schachenmayer: arXiv:1408.4441
@@ -899,8 +900,6 @@ class Dtwa_System:
 	dhwdt_abs2_locsum = np.sum(list_of_dhwdt_abs2, axis=0)
 	dhwdt_abs2_totals = np.zeros_like(dhwdt_abs2_locsum)\
 	  if rank == root else None
-
-      if self.verbose:
 	temp_comm = Intracomm(comm)
 	dhwdt_abs2_totals = temp_comm.reduce(dhwdt_abs2_locsum, root=root)
 	if rank == root:
