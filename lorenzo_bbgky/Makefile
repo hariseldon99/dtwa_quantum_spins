@@ -6,9 +6,6 @@ lorenzo_bbgky.so: lorenzo_bbgky.c
 test: test_main.c lorenzo_bbgky.o
 	$(CC) -o $@ $?
 
-bbgkymodule: bbgkymodule.c
-	python setup.py build
-
 clean:
 	rm -f test *.o *.so *.pyc
 	rm -rf build
