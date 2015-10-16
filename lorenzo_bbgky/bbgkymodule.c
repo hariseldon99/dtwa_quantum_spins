@@ -1,6 +1,6 @@
 #include <Python.h>
 
-#include "libtest.h"
+#include "lorenzo_bbgky.h"
 
 static PyObject* wrap_test_get_data_nulls(PyObject* self)
 {

@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "libtest.h"
+#include "lorenzo_bbgky.h"
 
 int main (void)
 {
