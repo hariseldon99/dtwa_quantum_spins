@@ -4,12 +4,12 @@ This example scripts computes the hopping matrix of a 2D lattice with
 power law (alpha) decay in the hopping amplitude
 """
 import numpy as np
-import sys
 import csv
 from mpi4py import MPI
-sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/")
+import sys
+sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/") 
 import dtwa_quantum_spins as dtwa
-  
+ 
 def run_dtwa():
   comm = MPI.COMM_WORLD
   rank = comm.Get_rank()
@@ -41,7 +41,7 @@ def run_dtwa():
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
     #Initiate the DTWA system with the parameters and niter
-    d = dtwa.Dtwa_System(p, comm, n_t=niter, bbgky=True, verbose=True)
+    d = dtwa.Dtwa_System(p, comm, n_t=niter, bbgky=False, verbose=True)
 
     #Prepare the times
     t0 = 0.0

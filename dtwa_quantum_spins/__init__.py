@@ -1,5 +1,6 @@
 # Author:  Analabha roy
 # Contact: daneel@utexas.edu
+from __future__ import division, print_function
 
 """
     Discrete Truncated Wigner Approximation (dTWA) for quantum spins
@@ -25,6 +26,5 @@ __version__   = '0.1'
 __author__    = 'Analabha Roy'
 __credits__   = 'Lorenzo Pucci, NiTheP Stellenbosch'
 
-from __future__ import division, print_function
 __all__ = ["dtwa_quantum_spins", "reductions","redirect_stdout"]
 from dtwa_quantum_spins import *

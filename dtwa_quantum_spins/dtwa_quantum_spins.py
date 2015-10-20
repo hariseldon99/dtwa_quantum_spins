@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import division, print_function
 
 """
     Discrete Truncated Wigner Approximation (dTWA) for quantum spins
@@ -21,7 +22,6 @@
     * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 """
 
-from __future__ import division, print_function
 from mpi4py import MPI
 from reductions import Intracomm
 from redirect_stdout import stdout_redirected
@@ -33,21 +33,112 @@ import random
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy.sparse import *
-
 from scipy.integrate import odeint
-
 from pprint import pprint
 from tabulate import tabulate
-   
+#Try to import lorenzo's optimized bbgky module, if available
+try:
+  import lorenzo_bbgky as lb
+  lb_avail = True
+except ImportError:
+  lb_avail = False
+
 threshold = 1e-4
 root = 0
 #This is the kronecker delta symbol for vector indices
 deltaij = np.eye(3)
-
 #This is the Levi-Civita symbol for vector indices
 eijk = np.zeros((3, 3, 3))
 eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
 eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+
+def sample(param, sampling, seed):
+  """
+  Different phase space sampling schemes for the initial state,
+  hardcoded as a fully polarized product state
+  """
+  random.seed(seed)
+  np.random.seed(seed)
+  N = param.latsize
+  sx_init = np.ones(N)
+  if sampling == "spr":
+    #According to Schachenmayer, the wigner function of the quantum
+    #state generates the below initial conditions classically
+    sy_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+    sz_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
+    #Set initial conditions for the dynamics locally to vector 
+    #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
+    #s^z,s^z,s^z, ...]
+    s_init_spins = np.concatenate((sx_init, sy_init, sz_init))
+  elif sampling == "1-0":
+    spin_choices = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
+    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
+    s_init_spins = spins.T.flatten()
+  elif sampling == "all":
+    spin_choices_spr = np.array([(1, 1,1),(1, 1,-1),(1, -1,1),(1, -1,-1)])
+    spin_choices_10 = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
+    spin_choices = np.concatenate((spin_choices_10, spin_choices_spr))
+    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
+    s_init_spins = spins.T.flatten()
+  else:
+    pass
+  # Set initial correlations to 0.
+  s_init_corrs = np.zeros(9*N*N)
+  return s_init_spins, s_init_corrs
+      
+def bbgky_observables(t_output, s, params):
+  N = params.latsize
+  """
+  Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
+  wigner func at t_output values LOCALLY for each initcond and
+  return them as an 'OutData' object. This assumes bbgky routine.
+  For dtwa only, the observables are coded inline
+  """
+  sx_expct = np.sum(s[:, 0:N], axis=1) 
+  sy_expct = np.sum(s[:, N:2*N], axis=1) 
+  sz_expct = np.sum(s[:, 2*N:3*N], axis=1) 
+	  
+  #svec  is the tensor s^l_\mu
+  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
+  sview = s.view()
+  gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
+  gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
+  #Quantum spin variance 
+  sx_var = np.sum(gt[:,0,0,:,:], axis=(-1,-2))
+  sx_var += (np.sum(s[:, 0:N], axis=1)**2 \
+    - np.sum(s[:, 0:N]**2, axis=1))
+	  
+  sy_var = np.sum(gt[:,1,1,:,:], axis=(-1,-2))
+  sy_var += (np.sum(s[:, N:2*N], axis=1)**2 \
+  - np.sum(s[:, N:2*N]**2, axis=1))
+  
+  sz_var = np.sum(gt[:,2,2,:,:], axis=(-1,-2))
+  sz_var += (np.sum(s[:, 2*N:3*N], axis=1)**2 \
+  - np.sum(s[:, 2*N:3*N]**2, axis=1))
+  
+  sxy_var = np.sum(gt[:,0,1,:,:], axis=(-1,-2))
+  sxy_var += np.sum([fftconvolve(s[m, 0:N], s[m, N:2*N]) \
+  for m in xrange(t_output.size)], axis=1)
+  #Remove the diagonal parts
+  sxy_var -= np.sum(s[:, 0:N] *  s[:, N:2*N], axis=1) 
+
+  sxz_var = np.sum(gt[:,0,2,:,:], axis=(-1,-2))
+  sxz_var += np.sum([fftconvolve(s[m, 0:N], s[m, 2*N:3*N]) \
+    for m in xrange(t_output.size)], axis=1)
+  #Remove the diagonal parts
+  sxz_var -= np.sum(s[:, 0:N] *  s[:, 2*N:3*N], axis=1)
+  
+  syz_var = np.sum(gt[:,1,2,:,:], axis=(-1,-2))
+  syz_var += np.sum([fftconvolve(s[m, N:2*N], s[m, 2*N:3*N]) \
+    for m in xrange(t_output.size)], axis=1)
+  #Remove the diagonal parts
+  syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
+	  
+  localdata = OutData(t_output, sx_expct, sy_expct,\
+    sz_expct, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
+      syz_var, params)
+  
+  return localdata
 
 def t_deriv(quantities, times):
   """
@@ -284,6 +375,25 @@ def jac_dtwa_bbgky(s, t, param):
   
   return full_jacobian
 
+def lorenzo_bbgky_pywrap(s, t, param):
+    """
+    Python wrapper to lorenzo's C bbgky module
+    """
+    N = param.latsize
+    #svec  is the tensor s^l_\mu
+    #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
+    sview = s.view()
+    stensor = sview[0:3*N].reshape(3, N)
+    gtensor = sview[3*N:].reshape(3, 3, N, N)
+    gtensor[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
+    dsdt = np.zeros_like(stensor)
+    dgdt = np.zeros_like(gtensor)
+    lb.bbgky(dgdt, dsdt, stensor ,gtensor, size=N, \
+      hopmat=param.hopmat, jvec=param.jvec, hvec=param.hvec, \
+	norm=param.norm)
+    #Flatten it before returning
+    return np.concatenate((dsdt.flatten(), 2.0 * dgdt.flatten()))
+ 
 class ParamData:
     """Class that stores Hamiltonian and lattice parameters 
        to be used in each dTWA instance. This class has no 
@@ -389,7 +499,61 @@ class OutData:
 	    self.sxyvar, self.sxzvar, self.syzvar),\
 	    ((self.sx)**2,(self.sy)**2,(self.sz)**2,\
 	      (self.sx * self.sy),(self.sx * self.sz),(self.sy * self.sz))))
-	
+
+def sum_reduce_all_data(param, datalist_loc,t, mpcomm):
+    """
+    Does the parallel sum reduction of all data
+    """
+    #Do local sums
+    sx_locsum = np.sum(data.sx for data in datalist_loc)
+    sy_locsum = np.sum(data.sy for data in datalist_loc)
+    sz_locsum = np.sum(data.sz for data in datalist_loc)
+    sxvar_locsum = np.sum(data.sxvar for data in datalist_loc)
+    syvar_locsum = np.sum(data.syvar for data in datalist_loc)
+    szvar_locsum = np.sum(data.szvar for data in datalist_loc)
+    sxyvar_locsum = np.sum(data.sxyvar for data in datalist_loc)
+    sxzvar_locsum = np.sum(data.sxzvar for data in datalist_loc)
+    syzvar_locsum = np.sum(data.syzvar for data in datalist_loc)
+    
+    #Only root processor will actually get the data
+    sx_totals = np.zeros_like(sx_locsum) if mpcomm.rank == root\
+      else None
+    sy_totals = np.zeros_like(sy_locsum) if mpcomm.rank == root\
+      else None
+    sz_totals = np.zeros_like(sz_locsum) if mpcomm.rank == root\
+      else None
+    sxvar_totals = np.zeros_like(sxvar_locsum) if mpcomm.rank == root\
+      else None
+    syvar_totals = np.zeros_like(syvar_locsum) if mpcomm.rank == root\
+      else None
+    szvar_totals = np.zeros_like(szvar_locsum) if mpcomm.rank == root\
+      else None
+    sxyvar_totals = np.zeros_like(sxyvar_locsum) if mpcomm.rank == root\
+      else None
+    sxzvar_totals = np.zeros_like(sxzvar_locsum) if mpcomm.rank == root\
+      else None
+    syzvar_totals = np.zeros_like(syzvar_locsum) if mpcomm.rank == root\
+      else None
+    
+    #To prevent conflicts with other comms
+    duplicate_comm = Intracomm(mpcomm)
+    sx_totals = duplicate_comm.reduce(sx_locsum, root=root)
+    sy_totals = duplicate_comm.reduce(sy_locsum, root=root)
+    sz_totals = duplicate_comm.reduce(sz_locsum, root=root)
+    sxvar_totals = duplicate_comm.reduce(sxvar_locsum, root=root)
+    syvar_totals = duplicate_comm.reduce(syvar_locsum, root=root)
+    szvar_totals = duplicate_comm.reduce(szvar_locsum, root=root)
+    sxyvar_totals = duplicate_comm.reduce(sxyvar_locsum, root=root)
+    sxzvar_totals = duplicate_comm.reduce(sxzvar_locsum, root=root)
+    syzvar_totals = duplicate_comm.reduce(syzvar_locsum, root=root)
+
+    if mpcomm.rank == root:
+      return OutData(t, sx_totals, sy_totals, sz_totals, sxvar_totals, \
+	  syvar_totals, szvar_totals, sxyvar_totals, sxzvar_totals,\
+	    syzvar_totals, param)
+    else:
+      return None
+
 class Dtwa_System:
   """
     Class that creates the dTWA system.
@@ -490,60 +654,6 @@ class Dtwa_System:
       #The time independent part of the 10 subblock (dg_dot/ds):
       #is the SAME as ds_dot/dg	    
 
-  def sum_reduce_all_data(self, datalist_loc,t, mpcomm):
-      """
-      Does the parallel sum reduction of all data
-      """
-      #Do local sums
-      sx_locsum = np.sum(data.sx for data in datalist_loc)
-      sy_locsum = np.sum(data.sy for data in datalist_loc)
-      sz_locsum = np.sum(data.sz for data in datalist_loc)
-      sxvar_locsum = np.sum(data.sxvar for data in datalist_loc)
-      syvar_locsum = np.sum(data.syvar for data in datalist_loc)
-      szvar_locsum = np.sum(data.szvar for data in datalist_loc)
-      sxyvar_locsum = np.sum(data.sxyvar for data in datalist_loc)
-      sxzvar_locsum = np.sum(data.sxzvar for data in datalist_loc)
-      syzvar_locsum = np.sum(data.syzvar for data in datalist_loc)
-      
-      #Only root processor will actually get the data
-      sx_totals = np.zeros_like(sx_locsum) if mpcomm.rank == root\
-	else None
-      sy_totals = np.zeros_like(sy_locsum) if mpcomm.rank == root\
-	else None
-      sz_totals = np.zeros_like(sz_locsum) if mpcomm.rank == root\
-	else None
-      sxvar_totals = np.zeros_like(sxvar_locsum) if mpcomm.rank == root\
-	else None
-      syvar_totals = np.zeros_like(syvar_locsum) if mpcomm.rank == root\
-	else None
-      szvar_totals = np.zeros_like(szvar_locsum) if mpcomm.rank == root\
-	else None
-      sxyvar_totals = np.zeros_like(sxyvar_locsum) if mpcomm.rank == root\
-	else None
-      sxzvar_totals = np.zeros_like(sxzvar_locsum) if mpcomm.rank == root\
-	else None
-      syzvar_totals = np.zeros_like(syzvar_locsum) if mpcomm.rank == root\
-	else None
-      
-      #To prevent conflicts with other comms
-      duplicate_comm = Intracomm(mpcomm)
-      sx_totals = duplicate_comm.reduce(sx_locsum, root=root)
-      sy_totals = duplicate_comm.reduce(sy_locsum, root=root)
-      sz_totals = duplicate_comm.reduce(sz_locsum, root=root)
-      sxvar_totals = duplicate_comm.reduce(sxvar_locsum, root=root)
-      syvar_totals = duplicate_comm.reduce(syvar_locsum, root=root)
-      szvar_totals = duplicate_comm.reduce(szvar_locsum, root=root)
-      sxyvar_totals = duplicate_comm.reduce(sxyvar_locsum, root=root)
-      sxzvar_totals = duplicate_comm.reduce(sxzvar_locsum, root=root)
-      syzvar_totals = duplicate_comm.reduce(syzvar_locsum, root=root)
-
-      if mpcomm.rank == root:
-	return OutData(t, sx_totals, sy_totals, sz_totals, sxvar_totals, \
-	    syvar_totals, szvar_totals, sxyvar_totals, sxzvar_totals,\
-	      syzvar_totals, self)
-      else:
-	return None
-      
   def dtwa_only(self, time_info):
       comm = self.comm
       N = self.latsize
@@ -647,10 +757,11 @@ class Dtwa_System:
 	    sz_expct, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
 	      syz_var, self)
 	  list_of_local_data.append(localdata)
+	  
       #After loop above  sum reduce (don't forget to average) all locally
       #calculated expectations at each time to root
       outdat = \
-	self.sum_reduce_all_data(list_of_local_data, t_output, comm)    
+	sum_reduce_all_data(self, list_of_local_data, t_output, comm)    
 	  
       if rank == root:
 	  outdat.normalize_data(self.n_t, N)
@@ -726,33 +837,8 @@ class Dtwa_System:
 	list_of_dhwdt_abs2 = []
 
       for runcount in xrange(0, nt_loc, 1):
-	  random.seed(local_seeds[runcount] + self.seed_offset)
-	  np.random.seed(local_seeds[runcount] + self.seed_offset)
-	  sx_init = np.ones(N)
-	  if sampling == "spr":
-	    #According to Schachenmayer, the wigner function of the quantum
-	    #state generates the below initial conditions classically
-	    sy_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
-	    sz_init = 2.0 * np.random.randint(0,2, size=N) - 1.0
-	    #Set initial conditions for the dynamics locally to vector 
-	    #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ..., 
-	    #s^z,s^z,s^z, ...]
-	    s_init_spins = np.concatenate((sx_init, sy_init, sz_init))
-	  elif sampling == "1-0":
-	    spin_choices = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
-	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
-	    s_init_spins = spins.T.flatten()
-	  elif sampling == "all":
-	    spin_choices_spr = np.array([(1, 1,1),(1, 1,-1),(1, -1,1),(1, -1,-1)])
-	    spin_choices_10 = np.array([(1, 1,0),(1, 0,1),(1, -1,0),(1, 0,-1)])
-	    spin_choices = np.concatenate((spin_choices_10, spin_choices_spr))
-	    spins = np.array([random.choice(spin_choices) for i in xrange(N)])
-	    s_init_spins = spins.T.flatten()
-	  else:
-	    pass
-	  
-	  # Set initial correlations to 0.
-	  s_init_corrs = np.zeros(9*N*N)
+	  s_init_spins, s_init_corrs = sample(self, sampling, \
+	    local_seeds[runcount] + self.seed_offset)
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
@@ -783,57 +869,13 @@ class Dtwa_System:
 	    list_of_dhwdt_abs2.extend(dhwdt_abs2)
 	  
 	  s = np.array(s, dtype="float128")#Widen memory to reduce overflows
-	  #Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
-	  #wigner func at t_output values LOCALLY for each initcond and
-	  #store them
-	  sx_expct = np.sum(s[:, 0:N], axis=1) 
-	  sy_expct = np.sum(s[:, N:2*N], axis=1) 
-	  sz_expct = np.sum(s[:, 2*N:3*N], axis=1) 
-		  
-	  #svec  is the tensor s^l_\mu
-	  #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
-	  sview = s.view()
-	  gt = sview[:, 3*N:].reshape(s.shape[0], 3, 3, N, N)
-	  gt[:,:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
-	  #Quantum spin variance 
-	  sx_var = np.sum(gt[:,0,0,:,:], axis=(-1,-2))
-	  sx_var += (np.sum(s[:, 0:N], axis=1)**2 \
-	    - np.sum(s[:, 0:N]**2, axis=1))
-		  
-	  sy_var = np.sum(gt[:,1,1,:,:], axis=(-1,-2))
-	  sy_var += (np.sum(s[:, N:2*N], axis=1)**2 \
-	  - np.sum(s[:, N:2*N]**2, axis=1))
-	  
-	  sz_var = np.sum(gt[:,2,2,:,:], axis=(-1,-2))
-	  sz_var += (np.sum(s[:, 2*N:3*N], axis=1)**2 \
-	  - np.sum(s[:, 2*N:3*N]**2, axis=1))
-	  
-	  sxy_var = np.sum(gt[:,0,1,:,:], axis=(-1,-2))
-	  sxy_var += np.sum([fftconvolve(s[m, 0:N], s[m, N:2*N]) \
-	  for m in xrange(t_output.size)], axis=1)
-	  #Remove the diagonal parts
-	  sxy_var -= np.sum(s[:, 0:N] *  s[:, N:2*N], axis=1) 
-
-	  sxz_var = np.sum(gt[:,0,2,:,:], axis=(-1,-2))
-	  sxz_var += np.sum([fftconvolve(s[m, 0:N], s[m, 2*N:3*N]) \
-	    for m in xrange(t_output.size)], axis=1)
-	  #Remove the diagonal parts
-	  sxz_var -= np.sum(s[:, 0:N] *  s[:, 2*N:3*N], axis=1)
-	  
-	  syz_var = np.sum(gt[:,1,2,:,:], axis=(-1,-2))
-	  syz_var += np.sum([fftconvolve(s[m, N:2*N], s[m, 2*N:3*N]) \
-	    for m in xrange(t_output.size)], axis=1)
-	  #Remove the diagonal parts
-	  syz_var -= np.sum(s[:, N:2*N] *  s[:, 2*N:3*N], axis=1)
-	  	  
-	  localdata = OutData(t_output, sx_expct, sy_expct,\
-	    sz_expct, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
-	      syz_var, self)
+	  localdata = bbgky_observables(t_output, s, self)
 	  list_of_local_data.append(localdata)
+	  
       #After loop above  sum reduce (don't forget to average) all locally
       #calculated expectations at each time to root
       outdat = \
-	self.sum_reduce_all_data(list_of_local_data, t_output, comm) 
+	sum_reduce_all_data(self, list_of_local_data, t_output, comm) 
       if self.verbose:
 	dhwdt_abs2_locsum = np.sum(list_of_dhwdt_abs2, axis=0)
 	dhwdt_abs2_totals = np.zeros_like(dhwdt_abs2_locsum)\
@@ -923,7 +965,244 @@ class Dtwa_System:
       return self.dtwa_bbgky(time_info, sampling)
     else:
       return self.dtwa_only(time_info)
+
+class Dtwa_System_optimized:
+  """
+    Class that creates the dTWA system.
+    
+       Introduction:  
+	This class instantiates an object encapsulating the optimized 
+	dTWA problem. It has methods that sample the trajectories
+	and execute the dTWA method (2nd order only i.e. with 
+	BBGKY), where the rhs of the dynamics uses optimized C code. 
+	These methods call integrators from scipy and time-evolve 
+	all the randomly sampled initial conditions.
+  """
+
+  def __init__(self, params, mpicomm, n_t=2000,\
+			  seed_offset=0,  bbgky=False, jac=False,\
+			    verbose=True):
+    """
+    Initiates an instance of the Dtwa_System class. Copies parameters
+    over from an instance of ParamData and stores precalculated objects .
+    
+       Usage:
+       d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000,\ 
+			 bbgky=False, jac=False,\ 
+					verbose=True)
+       
+       Parameters:
+       Paramdata 	= An instance of the class "ParamData". 
+			  See the relevant docs
+       MPI_COMMUNICATOR = The MPI communicator that distributes the samples
+			  to parallel processes. Set to MPI_COMM_SELF if 
+			  running serially
+       n_t		= Number of initial conditions to sample randomly 
+			  from the discreet spin phase space. Defaults to
+			  2000.
+       seed_offset      = Offset in the seed. The initial conditions are 
+			  sampled randomly by each processor using the 
+			  random generator in python with unique seeds for
+			  each processor. Each processor adds seeed_offset 
+			  to its seed. This allows you to ensure that 
+			  separate dTWA objects have uniquely random initial 
+			  states by changing seed_offset.
+			  Defaults to 0.
+       verbose		= Boolean for choosing verbose outputs. Setting 
+			  to 'True' dumps verbose output to stdout, which
+			  consists of full output from the integrator, as
+			  well as the output of the time derivative
+			  of the Weyl symbol of the Hamiltonian that you
+			  have provided via the 'hopmat' and other input
+			  in ParamData. Defaults to 'False'.			  
+			  
+      Return value: 
+      An object that stores all the parameters above.
+    """
+
+    self.__dict__.update(params.__dict__)
+    self.n_t = n_t
+    self.comm = mpicomm
+    self.seed_offset = seed_offset
+    #Booleans for verbosity and for calculating site data
+    self.verbose = verbose
+    N = params.latsize
+
+  def dtwa_bbgky(self, time_info, sampling):
+      comm = self.comm
+      old_settings = np.seterr(all='ignore') #Prevent overflow warnings
+      N = self.latsize
+      rank = comm.rank
+      if rank == root and self.verbose:
+	  pprint("# Run parameters:")
+          #Copy params to another object, then delete
+          #the output that you don't want printed
+	  out = copy.copy(self)
+	  out.dsdotdg = 0.0
+	  out.delta_eps_tensor = 0.0
+	  out.jmat = 0.0
+          out.deltamn = 0.0	
+	  pprint(vars(out), depth=2)
+      if rank == root and not self.verbose:
+	  pprint("# Starting run ...")
+      if type(time_info) is tuple:
+	(t_init, t_final, n_steps) = time_info
+	dt = (t_final-t_init)/(n_steps-1.0)
+	t_output = np.arange(t_init, t_final, dt)
+      elif type(time_info) is list  or np.ndarray:
+	t_output = time_info
+      elif rank == root:
+	print("Please enter either a tuple or a list for the time interval") 
+	exit(0)
+      else:
+	exit(0)
+
+      #Let each process get its chunk of n_t by round robin
+      nt_loc = 0
+      iterator = rank
+      while iterator < self.n_t:
+	  nt_loc += 1
+	  iterator += comm.size
+      #Scatter unique seeds for generating unique random number arrays :
+      #each processor gets its own nt_loc seeds, and allocates nt_loc 
+      #initial conditions. Each i.c. is a 2N sized array
+      #now, each process sends its value of nt_loc to root
+      all_ntlocs = comm.gather(nt_loc, root=root)
+      #Let the root process initialize nt unique integers for random seeds
+      if rank == root:
+	  all_seeds = np.arange(self.n_t, dtype=np.int64)+1
+	  all_ntlocs = np.array(all_ntlocs)
+	  all_displacements = np.roll(np.cumsum(all_ntlocs), root+1)
+	  all_displacements[root] = 0 # First displacement
+      else:
+	  all_seeds = None
+	  all_displacements = None
+      local_seeds = np.zeros(nt_loc, dtype=np.int64)
+      #Root scatters nt_loc sized seed data to that particular process
+      comm.Scatterv([all_seeds, all_ntlocs, all_displacements,\
+	MPI.DOUBLE],local_seeds)
+
+      list_of_local_data = []
       
+      if self.verbose:
+	list_of_dhwdt_abs2 = []
+
+      for runcount in xrange(0, nt_loc, 1):
+	  s_init_spins, s_init_corrs = sample(self, sampling, \
+	    local_seeds[runcount] + self.seed_offset)
+	  #Redirect unwanted stdout warning messages to /dev/null
+	  with stdout_redirected():
+	    if self.verbose:
+	      s, info = odeint(lorenzo_bbgky_pywrap, \
+		np.concatenate((s_init_spins, s_init_corrs)),t_output, \
+		  args=(self,), Dfun=None, full_output=True)
+	    else:
+	      s = odeint(lorenzo_bbgky_pywrap, \
+		np.concatenate((s_init_spins, s_init_corrs)), t_output, \
+		  args=(self,), Dfun=None)
+	  
+	  #Computes |dH/dt|^2 for a particular alphavec & weighes it 
+	  #If the rms over alphavec of these are 0, then each H is const
+	  if self.verbose:
+	    hws = weyl_hamilt(s,t_output, self)
+	    dhwdt = np.array([t_deriv(hw, t_output) for hw in hws])
+	    dhwdt_abs2 = np.square(dhwdt) 
+	    list_of_dhwdt_abs2.extend(dhwdt_abs2)
+	  
+	  s = np.array(s, dtype="float128")#Widen memory to reduce overflows
+	  localdata = bbgky_observables(t_output, s, self)
+	  list_of_local_data.append(localdata)
+	  
+      #After loop above  sum reduce (don't forget to average) all locally
+      #calculated expectations at each time to root
+      outdat = \
+	sum_reduce_all_data(self, list_of_local_data, t_output, comm) 
+      if self.verbose:
+	dhwdt_abs2_locsum = np.sum(list_of_dhwdt_abs2, axis=0)
+	dhwdt_abs2_totals = np.zeros_like(dhwdt_abs2_locsum)\
+	  if rank == root else None
+	temp_comm = Intracomm(comm)
+	dhwdt_abs2_totals = temp_comm.reduce(dhwdt_abs2_locsum, root=root)
+	if rank == root:
+	  dhwdt_abs2_totals = dhwdt_abs2_totals/(self.n_t * N * N)
+	  dhwdt_abs_totals = np.sqrt(dhwdt_abs2_totals)
+	
+      if rank == root:
+	  outdat.normalize_data(self.n_t, N)
+	  if self.verbose:
+	    print("t-deriv of Hamilt (abs square) with wigner avg: ")
+	    print("  ")
+	    print(tabulate({"time": t_output, \
+	      "dhwdt_abs": dhwdt_abs_totals}, \
+	      headers="keys", floatfmt=".6f"))
+	  if self.jac and self.verbose:
+	    print('# Cumulative number of Jacobian evaluations by root:', \
+	      np.sum(info['nje']))
+	  print('# Done!')
+	  np.seterr(**old_settings)  # reset to default
+	  return outdat
+      else:
+	np.seterr(**old_settings)  # reset to default
+	return None
+  
+  def evolve(self, time_info, sampling="spr"):
+    """
+    This function calls the lsode 'odeint' integrator from scipy package
+    to evolve all the randomly sampled initial conditions in time. 
+    Depending on how the Dtwa_System class is instantiated, the function
+    chooses either the first order (i.e. purely classical dynamics)
+    or second order (i.e. classical + correlations via BBGKY corrections)
+    dTWA method(s). The lsode integrator controls integrator method and 
+    actual time steps adaptively. Verbosiy levels are decided during the
+    instantiation of this class. After the integration is complete, each 
+    process computes site observables for each trajectory, and used
+    MPI_Reduce to aggregate the sum to root. The root then returns the 
+    data as an object. An optional argument is the sampling scheme.
+    
+    
+       Usage:
+       data = d.evolve(times, sampling="spr")
+       
+       Required parameters:
+       times 		= Time information. There are 2 options: 
+			  1. A 3-tuple (t0, t1, steps), where t0(1) is the 
+			      initial (final) time, and steps are the number
+			      of time steps that are in the output. 
+			  2. A list or numpy array with the times entered
+			      manually.
+			      
+			      Note that the integrator method and the actual step sizes
+			      are controlled internally by the integrator. 
+			      See the relevant docs for scipy.integrate.odeint.
+			  
+       Optional parameters:
+       sampling		= The sampling scheme used. The choices are 
+			  1. "spr" : The prescription obtained from the
+				     phase point operators used by
+				     Schachenmayer et. al. in their paper.
+				     This is the default.
+			  2."1-0"  : <DESCRIBE>
+			  3."all"  : The prescription obtained from the 
+				     logical union of both the phase point
+				     operators above.
+			  Note that this is implemented only if the 'bbgky' 
+			  option in the 'Dtwa_System' object is set to True.
+			  If not (ie if you're running pure dtwa), then only
+			  "spr" sampling is implemented no matter what this
+			  option is set to.
+
+      Return value: 
+      An OutData object that contains:
+	1. The times, bound to the method t_output
+	2. The single site observables (x,y and z), 
+	   bound to the methods 'sx,sy,sz' respectively and 
+	3. All correlation sums (xx, yy, zz, xy, xz and yz), 
+	   bound to the methods 
+	   'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
+	   respectively
+    """
+    return self.dtwa_bbgky(time_info, sampling)
+ 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
