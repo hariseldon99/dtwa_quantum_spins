@@ -1,6 +1,7 @@
 from distutils.core import setup, Extension
- 
-module1 = Extension('lorenzo_bbgky', sources = ['lorenzo_bbgky/bbgkymodule.c', 'lorenzo_bbgky/lorenzo_bbgky.c'])
+import numpy as np
+
+lorenzo_bbgky = Extension('lorenzo_bbgky',include_dirs = [np.get_include()],sources = ['lorenzo_bbgky/bbgkymodule.c', 'lorenzo_bbgky/lorenzo_bbgky.c'])
  
 setup (name = 'dtwa_quantum_spins',
         version = '1.0',
@@ -56,4 +57,4 @@ setup (name = 'dtwa_quantum_spins',
 	    'Programming Language :: Python :: 2.7',
 	],
         packages=['dtwa_quantum_spins','lorenzo_bbgky'],
-        ext_modules = [module1])
+        ext_modules = [lorenzo_bbgky])

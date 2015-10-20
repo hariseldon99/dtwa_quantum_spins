@@ -1,14 +1,10 @@
-char *
-test_get_data(unsigned int len);
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_blas.h>
 
-char *
-test_get_data_nulls(int *len);
-
-void
-test_data_print(char *data, int len);
-
-void
-test_get_data_nulls_out(char **data, int *len);
-
-void
-test_get_fixed_array_size_2(double *data);
+/* Functions */
+int dsdg (double *, double **, double **, double **, double, double, double, double *);

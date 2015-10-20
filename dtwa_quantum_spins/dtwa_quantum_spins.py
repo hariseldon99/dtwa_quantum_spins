@@ -379,20 +379,15 @@ def lorenzo_bbgky_pywrap(s, t, param):
     """
     Python wrapper to lorenzo's C bbgky module
     """
-    N = param.latsize
-    #svec  is the tensor s^l_\mu
+    drv = drive(t, params)
+    #s[0:3N]  is the tensor s^l_\mu
     #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
-    sview = s.view()
-    stensor = sview[0:3*N].reshape(3, N)
-    gtensor = sview[3*N:].reshape(3, 3, N, N)
-    gtensor[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
-    dsdt = np.zeros_like(stensor)
-    dgdt = np.zeros_like(gtensor)
-    lb.bbgky(dgdt, dsdt, stensor ,gtensor, size=N, \
-      hopmat=param.hopmat, jvec=param.jvec, hvec=param.hvec, \
-	norm=param.norm)
-    #Flatten it before returning
-    return np.concatenate((dsdt.flatten(), 2.0 * dgdt.flatten()))
+    #Probably not wise to reshape b4 passing to a C routine.
+    #By default, numpy arrays are contiguous, but reshaping...
+    dsdt = np.zeros_like(s)
+    lb.bbgky(s, param.hopmat, \
+      param.jvec, param.hvec, drv, param.latsize,param.norm,dsdt)
+    return dsdt
  
 class ParamData:
     """Class that stores Hamiltonian and lattice parameters 

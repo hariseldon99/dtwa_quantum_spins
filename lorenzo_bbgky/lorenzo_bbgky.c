@@ -1,43 +1,16 @@
-#include <stdlib.h>
-#include <stdio.h>
+/* Lorenzo's implementation of the BBGKY equations in the homogeneous case */
 
-char *
-test_get_data(unsigned int len)
-{
-    return malloc(len);
-}
+#include "lorenzo_bbgky.h"
 
-char *
-test_get_data_nulls(int *len)
+int
+dsdg (double *s, double **hopmat, double **jvec, double **hvec, double drv, double latsize, double norm , double *dsdt)
 {
-    *len = 5;
-    char *d = malloc(5);
-    d[0] = 'a';
-    d[1] = 'b';
-    d[2] = '\0';
-    d[3] = 'c';
-    d[4] = '\0';
-    return d;
-}
+  //Put s into a gsl_vector and use vector views to reshape the first 3L elements into a matrix
+  //Use matrix views to reshape the rest of the elements into a [3][3][L][L] tensor with the first two and last two indices
+  //flattened
+  //Do the mean field contributions in cblas 
+  //Loop over all other unique indices to get the rhs
+  
+  return GSL_SUCCESS;
 
-void
-test_data_print(char *data, int len)
-{
-    int i;
-    for (i = 0; i < len; i++)
-        printf("%x (%c),",data[i],data[i]);
-    printf("\n");
-}
-
-void
-test_get_data_nulls_out(char **data, int *len)
-{
-    *data = test_get_data_nulls(len);
-}
-
-void
-test_get_fixed_array_size_2(double *data)
-{
-    data[0] = 1.0;
-    data[1] = 2.0;
 }

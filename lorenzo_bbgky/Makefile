@@ -1,7 +1,11 @@
+CC=gcc
 all: test lorenzo_bbgky.so bbgkymodule
 
-lorenzo_bbgky.so: lorenzo_bbgky.c
-	$(CC) -Wall -g -fPIC -shared -o $@ $? -lc
+lorenzo.bbgky.o: lorenzo_bbgky.c
+	$(CC) `gsl-config --cflags` -Wall -fPIC -O -g $< -c -o $@
+
+lorenzo_bbgky.so: lorenzo_bbgky.o
+	$(CC) -shared  $<  `gsl-config --libs` -o $@
 
 test: test_main.c lorenzo_bbgky.o
 	$(CC) -o $@ $?
