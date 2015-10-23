@@ -385,7 +385,7 @@ def lorenzo_bbgky_pywrap(s, t, param):
     #Probably not wise to reshape b4 passing to a C routine.
     #By default, numpy arrays are contiguous, but reshaping...
     dsdt = np.zeros_like(s)
-    lb.bbgky(s, param.hopmat, \
+    lb.bbgky(s, param.hopmat.flatten(), \
       param.jvec, param.hvec, drv, param.latsize,param.norm,dsdt)
     return dsdt
  

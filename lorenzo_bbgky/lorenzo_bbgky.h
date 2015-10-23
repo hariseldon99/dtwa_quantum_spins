@@ -7,4 +7,5 @@
 #include <gsl/gsl_blas.h>
 
 /* Functions */
-int dsdg (double *, double **, double **, double **, double, double, double, double *);
+int dsdg (double *, double *, double *, double *, double, double, double,
+	  double *);

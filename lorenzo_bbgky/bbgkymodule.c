@@ -11,7 +11,8 @@ wrap_bbgky (PyObject * self, PyObject * args)
 
   PyObject *s = NULL, *hopmat = NULL, *jvec = NULL, *hvec = NULL;
   PyObject *dsdt = NULL;
-  double drv[1], latsize[1], norm[1];
+  double drv, latsize, norm;
+  int ret;
 
   if (!PyArg_ParseTuple
       (args, "OOOOdddO!", &arg1, &arg2, &arg3, &arg4, drv, latsize, norm,
@@ -21,29 +22,39 @@ wrap_bbgky (PyObject * self, PyObject * args)
   s = PyArray_FROM_OTF (arg1, NPY_DOUBLE, NPY_IN_ARRAY);
   if (s == NULL)
     return NULL;
+  if (PyArray_NDIM (s) != 1)
+    goto fail;
   hopmat = PyArray_FROM_OTF (arg2, NPY_DOUBLE, NPY_IN_ARRAY);
-  if (hopmat == NULL)
+  if ((hopmat == NULL) || (PyArray_NDIM (hopmat) != 1))
     goto fail;
   jvec = PyArray_FROM_OTF (arg3, NPY_DOUBLE, NPY_IN_ARRAY);
-  if (jvec == NULL)
+  if ((jvec == NULL) || (PyArray_NDIM (jvec) != 1))
     goto fail;
   hvec = PyArray_FROM_OTF (arg4, NPY_DOUBLE, NPY_IN_ARRAY);
-  if (hvec == NULL)
+  if ((hvec == NULL) || (PyArray_NDIM (hvec) != 1))
     goto fail;
 
   dsdt = PyArray_FROM_OTF (out, NPY_DOUBLE, NPY_INOUT_ARRAY);
-  if (dsdt == NULL)
+  if ((dsdt == NULL) || (PyArray_NDIM (dsdt) != 1))
     goto fail;
 
   /* code that makes use of arguments */
   /* You will probably need at least
      nd = PyArray_NDIM(<..>)    -- number of dimensions
-     dims = PyArray_DIMS(<..>)  -- npy_intp array of length nd
-     showing length in each dim.
-     dptr = (double *)PyArray_DATA(<..>) -- pointer to data.
+     d  ims = PyArray_DIMS(<..>)  -- npy_intp array of length nd
+     showing length in each dim. */
 
-     If an error occurs goto fail.
-   */
+  int s_ptr = (double *) PyArray_DATA (s);
+  int hopmat_ptr = (double *) PyArray_DATA (hopmat);
+  int jvec_ptr = (double *) PyArray_DATA (jvec);
+  int hvec_ptr = (double *) PyArray_DATA (hvec);
+  int dsdt_ptr = (double *) PyArray_DATA (dsdt);
+
+  ret =
+    dsdg ((double *) s_ptr, (double *) hopmat_ptr, (double *) jvec_ptr,
+	  (double *) hvec_ptr, drv, latsize, norm, (double *) dsdt_ptr);
+  if (ret != GSL_SUCCESS)
+    goto fail;
 
   Py_DECREF (s);
   Py_DECREF (dsdt);
