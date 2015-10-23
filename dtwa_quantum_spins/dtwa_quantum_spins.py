@@ -558,13 +558,13 @@ class Dtwa_System:
 	It has all MPI_Gather routines for aggregating observable data
 	from the different random samples of initial conditions (which 
 	are run in parallel), and has methods that sample the trajectories
-	and execute the dTWA methods (1st order and 2nd order i.e. with 
-	BBGKY). These methods call integrators from scipy and time-evolve 
+	and execute the dTWA methods ( without BBGKY). 
+	These methods call integrators from scipy and time-evolve 
 	all the randomly sampled initial conditions.
   """
 
   def __init__(self, params, mpicomm, n_t=2000,\
-			  seed_offset=0,  bbgky=False, jac=False,\
+			  seed_offset=0,   jac=False,\
 			    verbose=True):
     """
     Initiates an instance of the Dtwa_System class. Copies parameters
@@ -626,29 +626,10 @@ class Dtwa_System:
     self.n_t = n_t
     self.comm = mpicomm
     self.seed_offset = seed_offset
-    self.bbgky = bbgky
     #Booleans for verbosity and for calculating site data
     self.verbose = verbose
     N = params.latsize
-    
-    #Only computes these if you want 2nd order
-    if self.bbgky and self.jac:
-      #Below are the constant subblocks of the 2nd order Jacobian
-      #The 00 subblock is the first order Jacobian in func below
-      #The entire 01 subblock, fully time independent (ds_dot/dg):
-      self.dsdotdg = -np.einsum("p,mh,ml,apr->arpmlh",\
-	self.jvec, self.jmat, self.deltamn, eijk)
-      self.dsdotdg += np.einsum("r,ml,mh,arp->arpmlh", \
-	self.jvec,self.jmat, self.deltamn, eijk)
-      self.dsdotdg = 2.0 * (self.dsdotdg/self.norm)
-      self.dsdotdg = self.dsdotdg.reshape(3*N, 9*N**2)
-      self.delta_eps_tensor = np.einsum("ml,nh,ar,qpb->mlnharqpb",\
-	self.deltamn,self.deltamn,deltaij,eijk)
-      self.delta_eps_tensor += np.einsum("mh,nl,ap,qrb->mhnlapqrb",\
-	self.deltamn,self.deltamn,deltaij,eijk)
-      #The time independent part of the 10 subblock (dg_dot/ds):
-      #is the SAME as ds_dot/dg	    
-
+ 
   def dtwa_only(self, time_info):
       comm = self.comm
       N = self.latsize
@@ -771,6 +752,143 @@ class Dtwa_System:
 	  return outdat
       else:
 	return None
+
+  def evolve(self, time_info, sampling="spr"):
+    """
+    This function calls the lsode 'odeint' integrator from scipy package
+    to evolve all the randomly sampled initial conditions in time. 
+    Depending on how the Dtwa_System class is instantiated, the function
+    chooses either the first order (i.e. purely classical dynamics)
+    or second order (i.e. classical + correlations via BBGKY corrections)
+    dTWA method(s). The lsode integrator controls integrator method and 
+    actual time steps adaptively. Verbosiy levels are decided during the
+    instantiation of this class. After the integration is complete, each 
+    process computes site observables for each trajectory, and used
+    MPI_Reduce to aggregate the sum to root. The root then returns the 
+    data as an object. 
+    
+    
+       Usage:
+       data = d.evolve(times)
+       
+       Required parameters:
+       times 		= Time information. There are 2 options: 
+			  1. A 3-tuple (t0, t1, steps), where t0(1) is the 
+			      initial (final) time, and steps are the number
+			      of time steps that are in the output. 
+			  2. A list or numpy array with the times entered
+			      manually.
+			      
+			      Note that the integrator method and the actual step sizes
+			      are controlled internally by the integrator. 
+			      See the relevant docs for scipy.integrate.odeint.
+      Return value: 
+      An OutData object that contains:
+	1. The times, bound to the method t_output
+	2. The single site observables (x,y and z), 
+	   bound to the methods 'sx,sy,sz' respectively and 
+	3. All correlation sums (xx, yy, zz, xy, xz and yz), 
+	   bound to the methods 
+	   'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
+	   respectively
+    """
+    
+    return self.dtwa_only(time_info)
+
+class Dtwa_BBGKY_System:
+  """
+    Class that creates the dTWA system.
+    
+       Introduction:  
+	This class instantiates an object encapsulating the dTWA problem.
+	It has all MPI_Gather routines for aggregating observable data
+	from the different random samples of initial conditions (which 
+	are run in parallel), and has methods that sample the trajectories
+	and execute the dTWA methods (2nd order i.e. with 
+	BBGKY). These methods call integrators from scipy and time-evolve 
+	all the randomly sampled initial conditions.
+  """
+
+  def __init__(self, params, mpicomm, n_t=2000,\
+			  seed_offset=0,  jac=False,\
+			    verbose=True):
+    """
+    Initiates an instance of the Dtwa_System class. Copies parameters
+    over from an instance of ParamData and stores precalculated objects .
+    
+       Usage:
+       d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000,\ 
+			 bbgky=False, jac=False,\ 
+					verbose=True)
+       
+       Parameters:
+       Paramdata 	= An instance of the class "ParamData". 
+			  See the relevant docs
+       MPI_COMMUNICATOR = The MPI communicator that distributes the samples
+			  to parallel processes. Set to MPI_COMM_SELF if 
+			  running serially
+       n_t		= Number of initial conditions to sample randomly 
+			  from the discreet spin phase space. Defaults to
+			  2000.
+       seed_offset      = Offset in the seed. The initial conditions are 
+			  sampled randomly by each processor using the 
+			  random generator in python with unique seeds for
+			  each processor. Each processor adds seeed_offset 
+			  to its seed. This allows you to ensure that 
+			  separate dTWA objects have uniquely random initial 
+			  states by changing seed_offset.
+			  Defaults to 0.
+       jac		= Boolean for choosing to evaluate the jacobian
+			  during the integration of the sampled initial
+			  conditions. If this is set to "True", then stiff
+			  regions of the trajectories allow the integrator 
+			  to compute the jacobian from the analytical 
+			  formula. Defaults to False. 
+			  WARNING: Keep this boolean 'False' if the 
+			  lattice size is very large, as the jacobian size
+			  scales as size^2 X size^2, and can cause buffer 
+			  overflows.
+       verbose		= Boolean for choosing verbose outputs. Setting 
+			  to 'True' dumps verbose output to stdout, which
+			  consists of full output from the integrator, as
+			  well as the output of the time derivative
+			  of the Weyl symbol of the Hamiltonian that you
+			  have provided via the 'hopmat' and other input
+			  in ParamData. Defaults to 'False'.			  
+			  
+      Return value: 
+      An object that stores all the parameters above. If bbgky
+      and 'jac' are set to 'True', then this object includes 
+      precalculated data for those parts of the second order 
+      jacobian that are time-independent. This is named 'dsdotdg'.
+    """
+
+    self.__dict__.update(params.__dict__)
+    self.jac = jac
+    self.n_t = n_t
+    self.comm = mpicomm
+    self.seed_offset = seed_offset
+    #Booleans for verbosity and for calculating site data
+    self.verbose = verbose
+    N = params.latsize
+    
+    #Only computes these if you want 2nd order
+    if self.jac:
+      #Below are the constant subblocks of the 2nd order Jacobian
+      #The 00 subblock is the first order Jacobian in func below
+      #The entire 01 subblock, fully time independent (ds_dot/dg):
+      self.dsdotdg = -np.einsum("p,mh,ml,apr->arpmlh",\
+	self.jvec, self.jmat, self.deltamn, eijk)
+      self.dsdotdg += np.einsum("r,ml,mh,arp->arpmlh", \
+	self.jvec,self.jmat, self.deltamn, eijk)
+      self.dsdotdg = 2.0 * (self.dsdotdg/self.norm)
+      self.dsdotdg = self.dsdotdg.reshape(3*N, 9*N**2)
+      self.delta_eps_tensor = np.einsum("ml,nh,ar,qpb->mlnharqpb",\
+	self.deltamn,self.deltamn,deltaij,eijk)
+      self.delta_eps_tensor += np.einsum("mh,nl,ap,qrb->mhnlapqrb",\
+	self.deltamn,self.deltamn,deltaij,eijk)
+      #The time independent part of the 10 subblock (dg_dot/ds):
+      #is the SAME as ds_dot/dg	    
 
   def dtwa_bbgky(self, time_info, sampling):
       comm = self.comm
@@ -956,12 +1074,9 @@ class Dtwa_System:
 	   respectively
     """
     
-    if self.bbgky:
-      return self.dtwa_bbgky(time_info, sampling)
-    else:
-      return self.dtwa_only(time_info)
+    return self.dtwa_bbgky(time_info, sampling)
 
-class Dtwa_System_optimized:
+class Dtwa_BBGKY_System_opt:
   """
     Class that creates the dTWA system.
     

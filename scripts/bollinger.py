@@ -36,8 +36,8 @@ def run_dtwa():
 		      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
   
   #Initiate the DTWA system with the parameters and niter
-  d = dtwa.Dtwa_System(p, comm, n_t=niter, seed_offset=offset, \
-    bbgky=True, verbose=False)
+  d = dtwa.Dtwa_BBGKY_System(p, comm, n_t=niter, seed_offset=offset, \
+	    verbose=False)
 
   #Prepare the times
   t0 = 0.0
