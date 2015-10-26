@@ -1,15 +1,14 @@
 CC=gcc
-all: test lorenzo_bbgky.so bbgkymodule
+all: lorenzo_bbgky.so
 
-lorenzo.bbgky.o: lorenzo_bbgky.c
-	$(CC) `gsl-config --cflags` -Wall -fPIC -O -g $< -c -o $@
+bbgkymodule.o: bbgkymodule.c
+	$(CC) -Wall -fPIC -O -g $< `pkg-config --cflags python` -c -o $@
 
-lorenzo_bbgky.so: lorenzo_bbgky.o
-	$(CC) -shared  $<  `gsl-config --libs` -o $@
+lorenzo_bbgky.o: lorenzo_bbgky.c 
+	$(CC) -Wall -fPIC -O -g $< -c -o $@
 
-test: test_main.c lorenzo_bbgky.o
-	$(CC) -o $@ $?
+lorenzo_bbgky.so: lorenzo_bbgky.o bbgkymodule.o
+	$(CC) -shared  $^  `pkg-config --libs python` -lblas -o $@
 
 clean:
-	rm -f test *.o *.so *.pyc
-	rm -rf build
+	rm -f *.o *.so *.pyc

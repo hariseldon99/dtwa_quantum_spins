@@ -1,31 +1,41 @@
 from distutils.core import setup, Extension
 import numpy as np
 
-lorenzo_bbgky = Extension('lorenzo_bbgky',include_dirs = [np.get_include()],sources = ['lorenzo_bbgky/bbgkymodule.c', 'lorenzo_bbgky/lorenzo_bbgky.c'])
+#Change these as needed
+blas_path = '/usr/lib'
+blas_headers = '/usr/include'
+
+lorenzo_bbgky = Extension('lorenzo_bbgky',\
+  include_dirs = [np.get_include(),blas_headers],\
+    libraries = ['blas'],\
+      library_dirs = [blas_path],\
+	sources = ['lorenzo_bbgky/bbgkymodule.c', \
+	  'lorenzo_bbgky/lorenzo_bbgky.c'])
  
 setup (name = 'dtwa_quantum_spins',
         version = '1.0',
-        description = 'Discrete Truncated Wigner Approximation (dTWA) for quantum spins',
+        description = """Discrete Truncated Wigner Approximation 
+			  (dTWA) for quantum spins""",
         long_description=\
 	  """
-	    Discrete Truncated Wigner Approximation (dTWA) for quantum spins
-	    and transverse fields with time-periodic drive
+	    Discrete Truncated Wigner Approximation (dTWA) for quantum 
+	    spins and transverse fields with time-periodic drive
 
-	    * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	    * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 	    * Copyright (c) 2015 Analabha Roy (daneel@utexas.edu)
 	    *
-	    *This is free software: you can redistribute it and/or modify it under
-	    *the terms of version 2 of the GNU Lesser General Public License
-	    *as published by the Free Software Foundation.
+	    *This is free software: you can redistribute it and/or modify 
+	    *it under the terms of version 2 of the GNU Lesser General 
+	    *Public License as published by the Free Software Foundation.
 	    *Notes:
-	    *1. The initial state is currently hard coded to be the classical ground
-	    *    state
+	    *1. The initial state is currently hard coded to be the 
+	    *classical ground  state
 	    *2. Primary references are
 	    *   PRM:  arXiv:1510.03768
 	    *   Anatoli: Ann. Phys 325 (2010) 1790-1852
 	    *   Mauritz: arXiv:1209.3697
 	    *   Schachenmayer: arXiv:1408.4441
-	    * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	    * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
          """,
         url='https://github.com/hariseldon99/dtwa_quantum_spins',
          # Author details
@@ -50,8 +60,9 @@ setup (name = 'dtwa_quantum_spins',
 	    # Pick your license as you wish (should match "license" above)
 	    'License :: GPL License',
 
-	    # Specify the Python versions you support here. In particular, ensure
-	    # that you indicate whether you support Python 2, Python 3 or both.
+	    # Specify the Python versions you support here. In particular, 
+	    #ensure that you indicate whether you support Python 2, 
+	    # Python 3 or both.
 	    'Programming Language :: Python :: 2',
 	    'Programming Language :: Python :: 2.6',
 	    'Programming Language :: Python :: 2.7',

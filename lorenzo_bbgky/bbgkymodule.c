@@ -11,11 +11,11 @@ wrap_bbgky (PyObject * self, PyObject * args)
 
   PyObject *s = NULL, *hopmat = NULL, *jvec = NULL, *hvec = NULL;
   PyObject *dsdt = NULL;
-  double drv, latsize, norm;
-  int ret;
+  double drv, norm;
+  int latsize, ret;
 
   if (!PyArg_ParseTuple
-      (args, "OOOOdddO!", &arg1, &arg2, &arg3, &arg4, drv, latsize, norm,
+      (args, "OOOOdidO!", &arg1, &arg2, &arg3, &arg4, &drv, &latsize, &norm,
        &PyArray_Type, &out))
     return NULL;
 
@@ -43,21 +43,22 @@ wrap_bbgky (PyObject * self, PyObject * args)
      nd = PyArray_NDIM(<..>)    -- number of dimensions
      d  ims = PyArray_DIMS(<..>)  -- npy_intp array of length nd
      showing length in each dim. */
-
-  int s_ptr = (double *) PyArray_DATA (s);
-  int hopmat_ptr = (double *) PyArray_DATA (hopmat);
-  int jvec_ptr = (double *) PyArray_DATA (jvec);
-  int hvec_ptr = (double *) PyArray_DATA (hvec);
-  int dsdt_ptr = (double *) PyArray_DATA (dsdt);
-
+    
+   double *s_ptr, *hopmat_ptr, *jvec_ptr, *hvec_ptr, *dsdt_ptr;
+   
+   s_ptr = (double *) PyArray_DATA (s);
+   hopmat_ptr = (double *) PyArray_DATA (hopmat);
+   jvec_ptr = (double *) PyArray_DATA (jvec);
+   hvec_ptr = (double *) PyArray_DATA (hvec);
+   dsdt_ptr = (double *) PyArray_DATA (dsdt);
+   
   ret =
     dsdg ((double *) s_ptr, (double *) hopmat_ptr, (double *) jvec_ptr,
 	  (double *) hvec_ptr, drv, latsize, norm, (double *) dsdt_ptr);
-  if (ret != GSL_SUCCESS)
+  if (ret != 0)
     goto fail;
 
   Py_DECREF (s);
-  Py_DECREF (dsdt);
   Py_DECREF (hopmat);
   Py_DECREF (jvec);
   Py_DECREF (hvec);
@@ -67,11 +68,10 @@ wrap_bbgky (PyObject * self, PyObject * args)
 
 fail:
   Py_XDECREF (s);
-  Py_XDECREF (dsdt);
   Py_XDECREF (hopmat);
   Py_XDECREF (jvec);
   Py_XDECREF (hvec);
-  PyArray_XDECREF_ERR (dsdt);
+  Py_XDECREF (dsdt);
   return NULL;
 }
 
