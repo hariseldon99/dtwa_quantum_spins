@@ -20,5 +20,4 @@ dsdg (double *s, double *hopmat, double *jvec, double *hvec, double drv,
   free (mf_s);
   free (mf_cmat);
   return 0;
-
 }
