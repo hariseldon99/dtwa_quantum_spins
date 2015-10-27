@@ -36,6 +36,14 @@ from scipy.sparse import *
 from scipy.integrate import odeint
 from pprint import pprint
 from tabulate import tabulate
+
+#Try to import mkl if it is available
+try:
+  import mkl
+  mkl_avail = True
+except ImportError:
+  mkl_avail = False
+
 #Try to import lorenzo's optimized bbgky module, if available
 try:
   import lorenzo_bbgky as lb

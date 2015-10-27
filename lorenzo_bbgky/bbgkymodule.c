@@ -53,8 +53,8 @@ wrap_bbgky (PyObject * self, PyObject * args)
   dsdt_ptr = (double *) PyArray_DATA (dsdt);
 
   ret =
-    dsdg ((double *) s_ptr, (double *) hopmat_ptr, (double *) jvec_ptr,
-	  (double *) hvec_ptr, drv, latsize, norm, (double *) dsdt_ptr);
+    dsdgdt ((double *) s_ptr, (double *) hopmat_ptr, (double *) jvec_ptr,
+	    (double *) hvec_ptr, drv, latsize, norm, (double *) dsdt_ptr);
   if (ret != 0)
     goto fail;
 
