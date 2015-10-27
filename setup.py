@@ -41,6 +41,8 @@ setup (name = 'dtwa_quantum_spins',
          # Author details
 	author='Analabha Roy',
 	author_email='daneel@utexas.edu',
+	package_data={'': ['LICENSE']},
+    	include_package_data=True,
 
 	# Choose your license
 	license='GPL',
