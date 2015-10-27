@@ -43,15 +43,15 @@ wrap_bbgky (PyObject * self, PyObject * args)
      nd = PyArray_NDIM(<..>)    -- number of dimensions
      d  ims = PyArray_DIMS(<..>)  -- npy_intp array of length nd
      showing length in each dim. */
-    
-   double *s_ptr, *hopmat_ptr, *jvec_ptr, *hvec_ptr, *dsdt_ptr;
-   
-   s_ptr = (double *) PyArray_DATA (s);
-   hopmat_ptr = (double *) PyArray_DATA (hopmat);
-   jvec_ptr = (double *) PyArray_DATA (jvec);
-   hvec_ptr = (double *) PyArray_DATA (hvec);
-   dsdt_ptr = (double *) PyArray_DATA (dsdt);
-   
+
+  double *s_ptr, *hopmat_ptr, *jvec_ptr, *hvec_ptr, *dsdt_ptr;
+
+  s_ptr = (double *) PyArray_DATA (s);
+  hopmat_ptr = (double *) PyArray_DATA (hopmat);
+  jvec_ptr = (double *) PyArray_DATA (jvec);
+  hvec_ptr = (double *) PyArray_DATA (hvec);
+  dsdt_ptr = (double *) PyArray_DATA (dsdt);
+
   ret =
     dsdg ((double *) s_ptr, (double *) hopmat_ptr, (double *) jvec_ptr,
 	  (double *) hvec_ptr, drv, latsize, norm, (double *) dsdt_ptr);
@@ -77,7 +77,8 @@ fail:
 
 static PyMethodDef ModuleMethods[] = {
   {"bbgky", wrap_bbgky, METH_VARARGS | METH_KEYWORDS,
-   "Executes the RHS of the bbgky dynamics"},
+   "bbgky(s, jmat, jvec, hvec, drive, N, norm, dsdt)\n\\n\
+C code with cblas dependency that optimally computes the RHS of the bbgky dynamics. \n Call this function from python as lorenzo_bbgky.bbgky(args)\n Arguments in the following order. All are either ints, doubles or 1d numpy arrays:\n s\t-\tNumpy array of all spins sx, sy, sz (vecs of size N) and correlations matrices (size N X N)\n \t\tflattened as [sx, sy, sz, gxx, gxy, gxz, gyx, gyy, gyz, gzx, gzy, gzz]),\n jmat\t-\tHopping matrix (NXN), flattened to 1d array,\n jvec\t-\tVector of hopping amplitudes [jx,jy,jz],\n hvec\t-\tVector of fields [hx,hy,hz],\n drive\t-\tPeriodic drive at the time when called. Set to unity to disable,\n N\t-\tLattice size,\n norm\t-\tNormalization of jvec,\n dsdt\t-\tOutput numpy array (same structure as s) "},
   {NULL, NULL, 0, NULL},
 };
 
