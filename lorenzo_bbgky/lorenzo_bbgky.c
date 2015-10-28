@@ -6,7 +6,7 @@ int
 dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	int latsize, double norm, double *dsdt)
 {
-  //Prepare the Levi civita symbol
+  //Prepare the Levi civita symbol DEBUG THIS!!! CONVERT TO ndarr
   int *eps;
   eps = (int *) calloc (27, sizeof (int));
   //Allocate by the [x,y,z] element as eps[x + (y*3) + (z*9)]
@@ -21,10 +21,10 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
   double *cmat, *dcdt_mat;
   int m, n, b, g;		//xyz indices
   int i, j;			//lattice indices
-  double rhs;
+  double rhs, lastterm1, lastterm2;
 
-  cmat = &s[3 * latsize - 1];
-  dcdt_mat = &dsdt[3 * latsize - 1];
+  cmat = &s[3 * latsize];
+  dcdt_mat = &dsdt[3 * latsize];
 
   //Calculate the mean field contributions:
   //mf_s^\alpha_i =  \sum_k s^\alpha_k * hopmat_{ki}
@@ -33,7 +33,7 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
   double *mf_cmat = malloc (9 * latsize * latsize * sizeof (double));
 
   cblas_dsymm (CblasRowMajor, CblasRight, CblasUpper, 3, latsize, 1.0, hopmat,
-	       latsize, s, 3, 0.0, mf_s, 3);
+	       latsize, s, latsize, 0.0, mf_s, latsize);
 
   for (b = 0; b < 3; b++)
     for (g = 0; g < 3; g++)
@@ -53,13 +53,13 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	for (b = 0; b < 3; b++)
 	  for (g = 0; g < 3; g++)
 	    {
-	      rhs -= (hvec[b] + mf_s[i + 3 * b]) * s[i + 3 * g];
+	      rhs -= (hvec[b] + mf_s[i + latsize * b]) * s[i + latsize * g];
 	      rhs -=
 		mf_cmat[(g + 3 * b) * (latsize * latsize) +
 			(i + latsize * i)];
 	      rhs *= eps[m + (b * 3) + (g * 9)];	//[m,b,g]th element of levi civita
 	    }
-	dsdt[i + 3 * m] = 2.0 * rhs;
+	dsdt[i + latsize * m] = 2.0 * rhs;
       }
 
   //Update the correlations in dgdt
@@ -72,52 +72,78 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	    for (b = 0; b < 3; b++)
 	      {
 		rhs -=
-		  hopmat[j + latsize * i] * (s[i * 3 * b] - s[j * 3 * b]);
+		  hopmat[j + latsize * i] * (s[i + latsize * b] -
+					     s[j + latsize * b]);
 		rhs *= eps[m + (n * 3) + (b * 9)];	//[m,n,b]th element of levi civita
 	      }
 	    for (b = 0; b < 3; b++)
 	      for (g = 0; g < 3; g++)
 		{
 		  rhs -=
-		    (hvec[b] + mf_s[i + 3 * b] -
+		    (hvec[b] + mf_s[i + latsize * b] -
 		     hopmat[j + latsize * i] * s[j +
-						 3 * b]) * cmat[((n +
-								  3 * g) *
-								 latsize *
-								 latsize) +
-								(j +
-								 latsize *
-								 i)] * eps[b +
-									   (g
-									    *
-									    3)
-									   +
-									   (m
-									    *
-									    9)];
+						 latsize * b]) * cmat[((n +
+									3 *
+									g) *
+								       latsize
+								       *
+								       latsize)
+								      + (j +
+									 latsize
+									 *
+									 i)] *
+		    eps[b + (g * 3) + (m * 9)];
 		  rhs -=
-		    (hvec[b] + mf_s[j + 3 * b] -
+		    (hvec[b] + mf_s[j + latsize * b] -
 		     hopmat[i + latsize * j] * s[i +
-						 3 * b]) * cmat[((g +
-								  3 * m) *
-								 latsize *
-								 latsize) +
-								(j +
-								 latsize *
-								 i)] * eps[b +
-									   (g
-									    *
-									    3)
-									   +
-									   (n
-									    *
-									    9)];
-		  //Add the terms on Eq (B.4b), page 8 of manuscript and ur done!
+						 latsize * b]) * cmat[((g +
+									3 *
+									m) *
+								       latsize
+								       *
+								       latsize)
+								      + (j +
+									 latsize
+									 *
+									 i)] *
+		    eps[b + (g * 3) + (n * 9)];
+		  //RHS of Eq (B.4b), page 8 of arXiv:1510.03768 
+		  rhs -=
+		    (mf_cmat
+		     [((n + 3 * b) * latsize * latsize) + (j + latsize * i)] -
+		     hopmat[j +
+			    latsize * i] * cmat[((n + 3 * b) * latsize *
+						 latsize) + (j +
+							     latsize * j)]) *
+		    s[i + latsize * g] * eps[b + (g * 3) + (m * 9)];
+		  rhs -=
+		    (mf_cmat
+		     [((m + 3 * b) * latsize * latsize) + (j + latsize * i)] -
+		     hopmat[i +
+			    latsize * j] * cmat[((m + 3 * b) * latsize *
+						 latsize) + (i +
+							     latsize * i)]) *
+		    s[j + latsize * g] * eps[b + (g * 3) + (n * 9)];
+
+		  //Last term in the rhs of eqs (B.4b) in arXiv:1510.03768 
+		  lastterm1 =
+		    cmat[((g + 3 * b) * latsize * latsize) +
+			 (j + latsize * i)] + s[i + 3 * b] * s[j + 3 * g];
+		  lastterm1 *=
+		    s[i + latsize * m] * eps[b + (g * 3) + (n * 9)];
+
+		  lastterm2 =
+		    cmat[((b + 3 * g) * latsize * latsize) +
+			 (j + latsize * i)] + s[i + 3 * g] * s[j + 3 * b];
+		  lastterm2 *=
+		    s[i + latsize * n] * eps[b + (g * 3) + (m * 9)];
+
+		  rhs += (lastterm1 + lastterm2) * hopmat[j + latsize * i];
 		}
 	    dcdt_mat[((n + 3 * m) * latsize * latsize) + (j + latsize * i)] =
-	      rhs;
+	      2.0 * rhs;
 	    dcdt_mat[((m + 3 * n) * latsize * latsize) + (i + latsize * j)] =
-	      rhs;
+	      2.0 * rhs;
 	  }
 
   free (eps);

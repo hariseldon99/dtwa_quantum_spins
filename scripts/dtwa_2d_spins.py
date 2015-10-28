@@ -6,8 +6,8 @@ power law (alpha) decay in the hopping amplitude
 import numpy as np
 import csv
 from mpi4py import MPI
-#import sys
-#sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/") 
+import sys
+sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/build/lib.linux-x86_64-2.7/") 
 import dtwa_quantum_spins as dtwa
  
 def run_dtwa():
@@ -41,12 +41,12 @@ def run_dtwa():
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
     #Initiate the DTWA system with the parameters and niter
-    d = dtwa.Dtwa_BBGKY_System(p, comm, n_t=niter, verbose=True)
+    d = dtwa.Dtwa_BBGKY_System(p, comm, n_t=niter, seed_offset = 0, verbose=True)
 
     #Prepare the times
     t0 = 0.0
     ncyc = 1.0
-    nsteps = 200
+    nsteps = 100
 
     data = d.evolve((t0, ncyc, nsteps))
     

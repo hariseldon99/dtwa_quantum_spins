@@ -387,13 +387,13 @@ def lorenzo_bbgky_pywrap(s, t, param):
     """
     Python wrapper to lorenzo's C bbgky module
     """
-    drv = drive(t, params)
+    drv = drive(t, param)
     #s[0:3N]  is the tensor s^l_\mu
     #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
     #Probably not wise to reshape b4 passing to a C routine.
     #By default, numpy arrays are contiguous, but reshaping...
     dsdt = np.zeros_like(s)
-    lb.bbgky(s, param.hopmat.flatten(), \
+    lb.bbgky(s, param.jmat.flatten(), \
       param.jvec, param.hvec, drv, param.latsize,param.norm,dsdt)
     return dsdt
  
@@ -1098,15 +1098,13 @@ class Dtwa_BBGKY_System_opt:
   """
 
   def __init__(self, params, mpicomm, n_t=2000,\
-			  seed_offset=0,  bbgky=False, jac=False,\
-			    verbose=True):
+			  seed_offset=0,  jac=False, verbose=True):
     """
     Initiates an instance of the Dtwa_System class. Copies parameters
     over from an instance of ParamData and stores precalculated objects .
     
        Usage:
-       d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000,\ 
-			 bbgky=False, jac=False,\ 
+       d = Dtwa_System(Paramdata, MPI_COMMUNICATOR, n_t=2000, jac=False,\ 
 					verbose=True)
        
        Parameters:
@@ -1208,15 +1206,16 @@ class Dtwa_BBGKY_System_opt:
       for runcount in xrange(0, nt_loc, 1):
 	  s_init_spins, s_init_corrs = sample(self, sampling, \
 	    local_seeds[runcount] + self.seed_offset)
+	  init_s = np.concatenate((s_init_spins, s_init_corrs))
+	  #Ensure that the numpy array is double precision and C contiguous 
+	  init_s = np.require(init_s, dtype=np.float64, requirements=['A', 'O', 'W', 'C'])
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
-	      s, info = odeint(lorenzo_bbgky_pywrap, \
-		np.concatenate((s_init_spins, s_init_corrs)),t_output, \
+	      s, info = odeint(lorenzo_bbgky_pywrap, init_s,t_output, \
 		  args=(self,), Dfun=None, full_output=True)
 	    else:
-	      s = odeint(lorenzo_bbgky_pywrap, \
-		np.concatenate((s_init_spins, s_init_corrs)), t_output, \
+	      s = odeint(lorenzo_bbgky_pywrap, init_s, t_output, \
 		  args=(self,), Dfun=None)
 	  
 	  #Computes |dH/dt|^2 for a particular alphavec & weighes it 
@@ -1253,7 +1252,6 @@ class Dtwa_BBGKY_System_opt:
 	    print(tabulate({"time": t_output, \
 	      "dhwdt_abs": dhwdt_abs_totals}, \
 	      headers="keys", floatfmt=".6f"))
-	  if self.jac and self.verbose:
 	    print('# Cumulative number of Jacobian evaluations by root:', \
 	      np.sum(info['nje']))
 	  print('# Done!')
