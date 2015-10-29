@@ -2,21 +2,45 @@
 
 #include "lorenzo_bbgky.h"
 
+//Levi civita symbol
+int
+eps (int i, int j, int k)
+{
+  int result = 0;
+  if ((i == 0) && (j == 1) && (k == 2))
+    {
+      result = 1;
+    }
+  if ((i == 1) && (j == 2) && (k == 0))
+    {
+      result = 1;
+    }
+  if ((i == 2) && (j == 0) && (k == 1))
+    {
+      result = 1;
+    }
+
+  if ((i == 2) && (j == 1) && (k == 0))
+    {
+      result = -1;
+    }
+  if ((i == 1) && (j == 0) && (k == 2))
+    {
+      result = -1;
+    }
+  if ((i == 0) && (j == 2) && (k == 1))
+    {
+      result = -1;
+    }
+
+  return result;
+}
+
+
 int
 dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	int latsize, double norm, double *dsdt)
 {
-  //Prepare the Levi civita symbol DEBUG THIS!!! CONVERT TO ndarr
-  int *eps;
-  eps = (int *) calloc (27, sizeof (int));
-  //Allocate by the [x,y,z] element as eps[x + (y*3) + (z*9)]
-  eps[0 + (1 * 3) + (2 * 9)] = 1;
-  eps[1 + (2 * 3) + (0 * 9)] = 1;
-  eps[2 + (0 * 3) + (1 * 9)] = 1;
-  eps[0 + (2 * 3) + (1 * 9)] = -1;
-  eps[2 + (1 * 3) + (0 * 9)] = -1;
-  eps[1 + (0 * 3) + (2 * 9)] = -1;
-
   //Pointer to cmat
   double *cmat, *dcdt_mat;
   int m, n, b, g;		//xyz indices
@@ -57,7 +81,7 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	      rhs -=
 		mf_cmat[(g + 3 * b) * (latsize * latsize) +
 			(i + latsize * i)];
-	      rhs *= eps[m + (b * 3) + (g * 9)];	//[m,b,g]th element of levi civita
+	      rhs *= eps (m, b, g);
 	    }
 	dsdt[i + latsize * m] = 2.0 * rhs;
       }
@@ -74,7 +98,7 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 		rhs -=
 		  hopmat[j + latsize * i] * (s[i + latsize * b] -
 					     s[j + latsize * b]);
-		rhs *= eps[m + (n * 3) + (b * 9)];	//[m,n,b]th element of levi civita
+		rhs *= eps (m, n, b);	//[m,n,b]th element of levi civita
 	      }
 	    for (b = 0; b < 3; b++)
 	      for (g = 0; g < 3; g++)
@@ -92,7 +116,7 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 									 latsize
 									 *
 									 i)] *
-		    eps[b + (g * 3) + (m * 9)];
+		    eps (b, g, m);
 		  rhs -=
 		    (hvec[b] + mf_s[j + latsize * b] -
 		     hopmat[i + latsize * j] * s[i +
@@ -106,7 +130,7 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 									 latsize
 									 *
 									 i)] *
-		    eps[b + (g * 3) + (n * 9)];
+		    eps (b, g, n);
 		  //RHS of Eq (B.4b), page 8 of arXiv:1510.03768 
 		  rhs -=
 		    (mf_cmat
@@ -115,7 +139,7 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 			    latsize * i] * cmat[((n + 3 * b) * latsize *
 						 latsize) + (j +
 							     latsize * j)]) *
-		    s[i + latsize * g] * eps[b + (g * 3) + (m * 9)];
+		    s[i + latsize * g] * eps (b, g, m);
 		  rhs -=
 		    (mf_cmat
 		     [((m + 3 * b) * latsize * latsize) + (j + latsize * i)] -
@@ -123,20 +147,18 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 			    latsize * j] * cmat[((m + 3 * b) * latsize *
 						 latsize) + (i +
 							     latsize * i)]) *
-		    s[j + latsize * g] * eps[b + (g * 3) + (n * 9)];
+		    s[j + latsize * g] * eps (b, g, n);
 
 		  //Last term in the rhs of eqs (B.4b) in arXiv:1510.03768 
 		  lastterm1 =
 		    cmat[((g + 3 * b) * latsize * latsize) +
 			 (j + latsize * i)] + s[i + 3 * b] * s[j + 3 * g];
-		  lastterm1 *=
-		    s[i + latsize * m] * eps[b + (g * 3) + (n * 9)];
+		  lastterm1 *= s[i + latsize * m] * eps (b, g, n);
 
 		  lastterm2 =
 		    cmat[((b + 3 * g) * latsize * latsize) +
 			 (j + latsize * i)] + s[i + 3 * g] * s[j + 3 * b];
-		  lastterm2 *=
-		    s[i + latsize * n] * eps[b + (g * 3) + (m * 9)];
+		  lastterm2 *= s[i + latsize * n] * eps (b, g, m);
 
 		  rhs += (lastterm1 + lastterm2) * hopmat[j + latsize * i];
 		}
@@ -146,7 +168,6 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	      2.0 * rhs;
 	  }
 
-  free (eps);
   free (mf_s);
   free (mf_cmat);
   return 0;
