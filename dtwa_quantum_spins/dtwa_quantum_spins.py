@@ -393,7 +393,7 @@ def lorenzo_bbgky_pywrap(s, t, param):
     #Probably not wise to reshape b4 passing to a C routine.
     #By default, numpy arrays are contiguous, but reshaping...
     dsdt = np.zeros_like(s)
-    lb.bbgky(s, param.jmat.flatten(), \
+    lb.bbgky(param.workspace, s, param.jmat.flatten(), \
       param.jvec, param.hvec, drv, param.latsize,param.norm,dsdt)
     return dsdt
  
@@ -1143,6 +1143,10 @@ class Dtwa_BBGKY_System_opt:
     #Booleans for verbosity and for calculating site data
     self.verbose = verbose
     N = params.latsize
+    #Create a workspace for mean field evaluaions
+    self.workspace = np.zeros(3*N+9*N*N)
+    self.workspace = np.require(self.workspace, \
+      dtype=np.float64, requirements=['A', 'O', 'W', 'C'])
 
   def dtwa_bbgky(self, time_info, sampling):
       comm = self.comm
@@ -1208,7 +1212,8 @@ class Dtwa_BBGKY_System_opt:
 	    local_seeds[runcount] + self.seed_offset)
 	  init_s = np.concatenate((s_init_spins, s_init_corrs))
 	  #Ensure that the numpy array is double precision and C contiguous 
-	  init_s = np.require(init_s, dtype=np.float64, requirements=['A', 'O', 'W', 'C'])
+	  init_s = np.require(init_s, dtype=np.float64, \
+	    requirements=['A', 'O', 'W', 'C'])
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:

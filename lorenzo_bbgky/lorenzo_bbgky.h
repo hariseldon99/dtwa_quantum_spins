@@ -4,5 +4,5 @@
 #include <cblas.h>
 
 /* Functions */
-int dsdgdt (double *, double *, double *, double *, double, int, double,
-	    double *);
+int dsdgdt (double *, double *, double *, double *, double *, double, int,
+	    double, double *);

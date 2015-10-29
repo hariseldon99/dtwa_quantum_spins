@@ -38,8 +38,8 @@ eps (int i, int j, int k)
 
 
 int
-dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
-	int latsize, double norm, double *dsdt)
+dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
+	double drv, int latsize, double norm, double *dsdt)
 {
   //Pointer to cmat
   double *cmat, *dcdt_mat;
@@ -53,8 +53,10 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
   //Calculate the mean field contributions:
   //mf_s^\alpha_i =  \sum_k s^\alpha_k * hopmat_{ki}
   //mf_cmat^{\gamma + 3\beta}_{j+N*i} = \sum_k hopmat_{ik} * cmat^{\gamma+3\beta}_{i+N*k}
-  double *mf_s = malloc (3 * latsize * sizeof (double));
-  double *mf_cmat = malloc (9 * latsize * latsize * sizeof (double));
+  double *mf_s, *mf_cmat;
+
+  mf_s = &wspace[0];
+  mf_cmat = &wspace[3 * latsize];
 
   cblas_dsymm (CblasRowMajor, CblasRight, CblasUpper, 3, latsize, 1.0, hopmat,
 	       latsize, s, latsize, 0.0, mf_s, latsize);
@@ -168,7 +170,5 @@ dsdgdt (double *s, double *hopmat, double *jvec, double *hvec, double drv,
 	      2.0 * rhs;
 	  }
 
-  free (mf_s);
-  free (mf_cmat);
   return 0;
 }
