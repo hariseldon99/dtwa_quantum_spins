@@ -155,12 +155,6 @@ def t_deriv(quantities, times):
   dt = np.gradient(times)
   return np.gradient(quantities, dt)
 
-def drive(t, params):
-    """
-    Returns the time-dependent drive h(t)
-    """
-    return params.h0 * np.cos(params.omega * t)
-
 def weyl_hamilt(s,times,param):
   """
   Evaluates the Weyl Symbols of the Hamiltonian, H_w
@@ -172,12 +166,11 @@ def weyl_hamilt(s,times,param):
   """
   N = param.latsize
   #s[:, 0:N] = sx , s[:, N:2*N] = sy, s[:, 2*N:3*N] = sz
-  drvs = drive(times, param)
   hw = param.jx * np.dot(s[:,0*N:1*N],param.jmat.dot(s[:,0*N:1*N].T))
   hw += param.jy * np.dot(s[:,1*N:2*N],param.jmat.dot(s[:,1*N:2*N].T))
   hw += param.jz * np.dot(s[:,2*N:3*N],param.jmat.dot(s[:,2*N:3*N].T))
   hw = hw /(2.0 * param.norm)
-  hw += drvs * (param.hx * np.sum(s[:, 0:N]) +\
+  hw += (param.hx * np.sum(s[:, 0:N]) +\
     param.hy * np.sum(s[:, N:2*N]) + param.hz * np.sum(s[:, 2*N:3*N]))
   return -hw
 
@@ -187,13 +180,12 @@ def func_dtwa(s, t, param):
     """
     N = param.latsize
     #s[0:N] = sx , s[N:2*N] = sy, s[2*N:3*N] = sz
-    drv = drive(t, param)
     jsx = 2.0 * param.jx * param.jmat.dot(s[0:N])/param.norm
-    jsx += 2.0 * drv * param.hx
+    jsx += 2.0 * param.hx
     jsy = 2.0 * param.jy * param.jmat.dot(s[N:2*N])/param.norm
-    jsy += 2.0 * drv * param.hy
+    jsy += 2.0 * param.hy
     jsz = 2.0 * param.jz * param.jmat.dot(s[2*N:3*N])/param.norm
-    jsz += 2.0 * drv * param.hz
+    jsz += 2.0 * param.hz
     dsxdt = s[N:2*N] * jsz - s[2*N:3*N] * jsy
     dsydt = s[2*N:3*N] * jsx - s[0:N] * jsz
     dszdt = s[0:N] * jsy - s[N:2*N] * jsx
@@ -217,7 +209,6 @@ def jac_dtwa(s, t, param):
     N = param.latsize
     #s[0:N] = sx , s[N:2*N] = sy, s[2*N:3*N] = sz
     full_jacobian = np.zeros(shape=(3*N, 3*N))
-    drivemat = 2.0 * drive(t, param) * np.eye(N)
     diag_jsx = np.diagflat((param.jmat.dot(s[0:N])))/param.norm
     diag_jsy = np.diagflat((param.jmat.dot(s[N:2*N])))/param.norm
     #diag_jsz = np.diagflat((param.jmat.dot(s[2*N:3*N])))/param.norm
@@ -227,14 +218,14 @@ def jac_dtwa(s, t, param):
     full_jacobian[0:N, N:2*N] = param.jz * diag_jsx + drivemat * param.hz\
       -param.jy * hash_jsz
     full_jacobian[N:2*N, 0:N] = -param.jz * diag_jsx - \
-      drivemat * param.hz + param.jx * hash_jsz
-    full_jacobian[0:N, 2*N:3*N] = -param.jy * diag_jsy - drivemat * \
+      param.hz + param.jx * hash_jsz
+    full_jacobian[0:N, 2*N:3*N] = -param.jy * diag_jsy - \
       param.hy + param.jz * hash_jsy
-    full_jacobian[2*N:3*N, 0:N] = param.jy * diag_jsy + drivemat * \
+    full_jacobian[2*N:3*N, 0:N] = param.jy * diag_jsy + \
       param.hy - param.jx * hash_jsy
-    full_jacobian[N:2*N, 2*N:3*N] = param.jx * diag_jsx + drivemat * \
+    full_jacobian[N:2*N, 2*N:3*N] = param.jx * diag_jsx + \
       param.hx - param.jz * hash_jsx
-    full_jacobian[2*N:3*N, N:2*N] = -param.jx * diag_jsx - drivemat * \
+    full_jacobian[2*N:3*N, N:2*N] = -param.jx * diag_jsx - \
       param.hx + param.jy * hash_jsx
     return full_jacobian
 
@@ -387,14 +378,13 @@ def lorenzo_bbgky_pywrap(s, t, param):
     """
     Python wrapper to lorenzo's C bbgky module
     """
-    drv = drive(t, param)
     #s[0:3N]  is the tensor s^l_\mu
     #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
     #Probably not wise to reshape b4 passing to a C routine.
     #By default, numpy arrays are contiguous, but reshaping...
     dsdt = np.zeros_like(s)
     lb.bbgky(param.workspace, s, param.jmat.flatten(), \
-      param.jvec, param.hvec, drv, param.latsize,param.norm,dsdt)
+      param.jvec, param.hvec, param.latsize,param.norm,dsdt)
     return dsdt
  
 class ParamData:
@@ -404,13 +394,13 @@ class ParamData:
     """
     
     def __init__(self, hopmat = None, norm=1.0, latsize=11, \
-			  h0=1.0, omega=0.0, hx=0.0, hy=0.0, hz=0.0,\
+			  hx=0.0, hy=0.0, hz=0.0,\
 			    jx=0.0, jy=0.0, jz=1.0):
       
       """
        Usage:
-       p = ParamData(hopmat = None, norm=1.0, latsize=100, h0=1.0,\ 
-		      omega=0.0, hx=0.0, hy=0.0, hz=0.0,\ 
+       p = ParamData(hopmat = None, norm=1.0, latsize=100, \ 
+		      hx=0.0, hy=0.0, hz=0.0,\ 
 			jx=0.0, jy=0.0, jz=1.0)
        
        All parameters (arguments) are optional.
@@ -435,10 +425,6 @@ class ParamData:
 	           need it		   
        latsize  =  The size of your lattice as an integer. This can be in 
 		   any dimensions
-       h0	=  The drive amplitude. This is the amplitude of a periodic
-		   cosine drive on the transverse field (if any). Defaults to 
-		   unity
-       omega	=  The frequency of the abovementioned drive. Defaults to 0.
        h(x,y,z) =  The values of the uniform transverse fields i.e, the terms
 		   that scale \sigma^{xyz} respectively in the Hamiltonian 
 		   Defaults to 0.
@@ -452,7 +438,6 @@ class ParamData:
 
       self.norm = norm
       self.latsize = latsize
-      self.h0, self.omega = h0 , omega # Drive ampl and freq
       self.hx, self.hy, self.hz  = hx , hy, hz#x transverse field
       self.jx, self.jy, self.jz = jx, jy, jz #hopping
       self.jvec, self.hvec = np.array([jx, jy, jz]), np.array([hx, hy, hz])
@@ -1098,7 +1083,7 @@ class Dtwa_BBGKY_System_opt:
   """
 
   def __init__(self, params, mpicomm, n_t=2000,\
-			  seed_offset=0,  jac=False, verbose=True):
+			  seed_offset=0, verbose=True):
     """
     Initiates an instance of the Dtwa_System class. Copies parameters
     over from an instance of ParamData and stores precalculated objects .
@@ -1257,8 +1242,6 @@ class Dtwa_BBGKY_System_opt:
 	    print(tabulate({"time": t_output, \
 	      "dhwdt_abs": dhwdt_abs_totals}, \
 	      headers="keys", floatfmt=".6f"))
-	    print('# Cumulative number of Jacobian evaluations by root:', \
-	      np.sum(info['nje']))
 	  print('# Done!')
 	  np.seterr(**old_settings)  # reset to default
 	  return outdat

@@ -13,11 +13,11 @@ wrap_bbgky (PyObject * self, PyObject * args)
   PyObject *workspace = NULL;
   PyObject *s = NULL, *hopmat = NULL, *jvec = NULL, *hvec = NULL;
   PyObject *dsdt = NULL;
-  double drv, norm;
+  double norm;
   int latsize, ret;
 
   if (!PyArg_ParseTuple
-      (args, "OOOOOdidO!", &arg0, &arg1, &arg2, &arg3, &arg4, &drv, &latsize,
+      (args, "OOOOOidO!", &arg0, &arg1, &arg2, &arg3, &arg4, &latsize,
        &norm, &PyArray_Type, &out))
     return NULL;
 
@@ -62,7 +62,7 @@ wrap_bbgky (PyObject * self, PyObject * args)
 
   ret =
     dsdgdt ((double *) wspace_ptr, (double *) s_ptr, (double *) hopmat_ptr,
-	    (double *) jvec_ptr, (double *) hvec_ptr, drv, latsize, norm,
+	    (double *) jvec_ptr, (double *) hvec_ptr, latsize, norm,
 	    (double *) dsdt_ptr);
   if (ret != 0)
     goto fail;
@@ -89,7 +89,7 @@ fail:
 static PyMethodDef ModuleMethods[] = {
   {"bbgky", wrap_bbgky, METH_VARARGS | METH_KEYWORDS,
    "bbgky(s, jmat, jvec, hvec, drive, N, norm, dsdt)\n\\n\
-C code with cblas dependency that optimally computes the RHS of the bbgky dynamics. \n Call this function from python as lorenzo_bbgky.bbgky(args)\n Arguments in the following order. All are either ints, doubles or 1d numpy arrays:n w\t-\t Workspace that is a Numpy array of minimum size 3*N+9*N*N\n s\t-\tNumpy array of all spins sx, sy, sz (vecs of size N) and correlations matrices (size N X N)\n \t\tflattened as [sx, sy, sz, gxx, gxy, gxz, gyx, gyy, gyz, gzx, gzy, gzz]),\n jmat\t-\tHopping matrix (NXN), flattened to 1d array,\n jvec\t-\tVector of hopping amplitudes [jx,jy,jz],\n hvec\t-\tVector of fields [hx,hy,hz],\n drive\t-\tPeriodic drive at the time when called. Set to unity to disable,\n N\t-\tLattice size,\n norm\t-\tNormalization of jvec,\n dsdt\t-\tOutput numpy array (same structure as s) "},
+C code with cblas dependency that optimally computes the RHS of the bbgky dynamics. \n Call this function from python as lorenzo_bbgky.bbgky(args)\n Arguments in the following order. All are either ints, doubles or 1d numpy arrays:n w\t-\t Workspace that is a Numpy array of minimum size 3*N+9*N*N\n s\t-\tNumpy array of all spins sx, sy, sz (vecs of size N) and correlations matrices (size N X N)\n \t\tflattened as [sx, sy, sz, gxx, gxy, gxz, gyx, gyy, gyz, gzx, gzy, gzz]),\n jmat\t-\tHopping matrix (NXN), flattened to 1d array,\n jvec\t-\tVector of hopping amplitudes [jx,jy,jz],\n hvec\t-\tVector of fields [hx,hy,hz],\n N\t-\tLattice size,\n norm\t-\tNormalization of jvec,\n dsdt\t-\tOutput numpy array (same structure as s) "},
   {NULL, NULL, 0, NULL},
 };
 

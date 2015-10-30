@@ -39,8 +39,9 @@ eps (int i, int j, int k)
 
 int
 dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
-	double drv, int latsize, double norm, double *dsdt)
+	int latsize, double norm, double *dsdt)
 {
+  double ncmprtol = 1e-10;	//Tolerance for comparing norm to unity
   //Pointer to cmat
   double *cmat, *dcdt_mat;
   int m, n, b, g;		//xyz indices
@@ -49,6 +50,17 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
 
   cmat = &s[3 * latsize];
   dcdt_mat = &dsdt[3 * latsize];
+
+  //Normalize
+  if (fabs (norm - 1.0) < ncmprtol)
+    {
+      for (i = 0; i < latsize; i++)
+	for (j = i + 1; j < latsize; j++)
+	  {
+	    hopmat[i + latsize * j] = hopmat[i + latsize * j] / norm;
+	    hopmat[j + latsize * i] = hopmat[i + latsize * j];
+	  }
+    }
 
   //Calculate the mean field contributions:
   //mf_s^\alpha_i =  \sum_k s^\alpha_k * hopmat_{ki}
@@ -72,23 +84,24 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
       }
 
   //Update the spins in dsdt
-  for (m = 0; m < 3; m++)
-    for (i = 0; i < latsize; i++)
+  for (i = 0; i < latsize; i++)
+    for (m = 0; m < 3; m++)
       {
 	rhs = 0.0;
-	for (b = 0; b < 3; b++)
-	  for (g = 0; g < 3; g++)
+	for (g = 0; g < 3; g++){
+	  for (b = 0; b < 3; b++)
 	    {
-	      rhs -= (hvec[b] + mf_s[i + latsize * b]) * s[i + latsize * g];
+	      rhs -= hvec[b] * s[i + latsize * g] * eps (m, b, g);
 	      rhs -=
-		mf_cmat[(g + 3 * b) * (latsize * latsize) +
-			(i + latsize * i)];
-	      rhs *= eps (m, b, g);
+		(mf_s[i + latsize * b] * s[i + latsize * g] +
+		  mf_cmat[((g + 3 * b) * latsize * latsize) +
+				    (i + latsize * i)]) * eps (m, b, g) * jvec[b];
 	    }
+	}
 	dsdt[i + latsize * m] = 2.0 * rhs;
       }
 
-  //Update the correlations in dgdt
+  //Update the correlations in dgdt DEBUG THIS ONLY!!!
   for (n = 0; n < 3; n++)
     for (m = n; m < 3; m++)
       for (i = 0; i < latsize; i++)
@@ -98,58 +111,51 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
 	    for (b = 0; b < 3; b++)
 	      {
 		rhs -=
-		  hopmat[j + latsize * i] * (s[i + latsize * b] -
-					     s[j + latsize * b]);
-		rhs *= eps (m, n, b);	//[m,n,b]th element of levi civita
+		  (jvec[n] * s[i + latsize * b] -
+		   jvec[m] * s[j + latsize * b]) * hopmat[j +
+							  latsize * i] *
+		  eps (m, n, b);
 	      }
 	    for (b = 0; b < 3; b++)
 	      for (g = 0; g < 3; g++)
 		{
 		  rhs -=
-		    (hvec[b] + mf_s[i + latsize * b] -
-		     hopmat[j + latsize * i] * s[j +
-						 latsize * b]) * cmat[((n +
-									3 *
-									g) *
-								       latsize
-								       *
-								       latsize)
-								      + (j +
-									 latsize
-									 *
-									 i)] *
-		    eps (b, g, m);
-		  rhs -=
-		    (hvec[b] + mf_s[j + latsize * b] -
-		     hopmat[i + latsize * j] * s[i +
-						 latsize * b]) * cmat[((g +
-									3 *
-									m) *
-								       latsize
-								       *
-								       latsize)
-								      + (j +
-									 latsize
-									 *
-									 i)] *
-		    eps (b, g, n);
-		  //RHS of Eq (B.4b), page 8 of arXiv:1510.03768 
-		  rhs -=
-		    (mf_cmat
-		     [((n + 3 * b) * latsize * latsize) + (j + latsize * i)] -
-		     hopmat[j +
-			    latsize * i] * cmat[((n + 3 * b) * latsize *
-						 latsize) + (j +
-							     latsize * j)]) *
-		    s[i + latsize * g] * eps (b, g, m);
-		  rhs -=
+		    (hvec[b] + jvec[b] * (mf_s[i + latsize * b] -
+					  hopmat[j + latsize * i] * s[j +
+								      latsize
+								      * b])) *
+		    cmat[((n + 3 * g) * latsize * latsize) +
+			 (j + latsize * i)] * eps (b, g,
+						   m) + (hvec[b] +
+							 jvec[b] *
+							 (mf_s
+							  [j + latsize * b] -
+							  hopmat[i +
+								 latsize *
+								 j] * s[i +
+									latsize
+									*
+									b])) *
+		    cmat[((g + 3 * m) * latsize * latsize) +
+			 (j + latsize * i)] * eps (b, g, n);
+
+		  rhs -= (mf_cmat
+			  [((n + 3 * b) * latsize * latsize) +
+			   (j + latsize * i)] - hopmat[j +
+						       latsize * i] *
+			  cmat[((n + 3 * b) * latsize * latsize) +
+			       (j + latsize * j)]) * s[i +
+						       latsize * g] * eps (b,
+									   g,
+									   m)
+		    * jvec[b] +
 		    (mf_cmat
 		     [((m + 3 * b) * latsize * latsize) + (j + latsize * i)] -
 		     hopmat[i +
 			    latsize * j] * cmat[((m + 3 * b) * latsize *
 						 latsize) + (i +
 							     latsize * i)]) *
-		    s[j + latsize * g] * eps (b, g, n);
+		    s[j + latsize * g] * eps (b, g, n) * jvec[b];
 
 		  //Last term in the rhs of eqs (B.4b) in arXiv:1510.03768 
 		  lastterm1 =
@@ -162,7 +168,9 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
 			 (j + latsize * i)] + s[i + 3 * g] * s[j + 3 * b];
 		  lastterm2 *= s[i + latsize * n] * eps (b, g, m);
 
-		  rhs += (lastterm1 + lastterm2) * hopmat[j + latsize * i];
+		  rhs +=
+		    (lastterm1 + lastterm2) * hopmat[j +
+						     latsize * i] * jvec[b];
 		}
 	    dcdt_mat[((n + 3 * m) * latsize * latsize) + (j + latsize * i)] =
 	      2.0 * rhs;
