@@ -88,94 +88,102 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
     for (m = 0; m < 3; m++)
       {
 	rhs = 0.0;
-	for (g = 0; g < 3; g++){
-	  for (b = 0; b < 3; b++)
-	    {
-	      rhs -= hvec[b] * s[i + latsize * g] * eps (m, b, g);
-	      rhs -=
-		(mf_s[i + latsize * b] * s[i + latsize * g] +
-		  mf_cmat[((g + 3 * b) * latsize * latsize) +
-				    (i + latsize * i)]) * eps (m, b, g) * jvec[b];
-	    }
-	}
+	for (g = 0; g < 3; g++)
+	  {
+	    for (b = 0; b < 3; b++)
+	      {
+		rhs -= hvec[b] * s[i + latsize * g] * eps (m, b, g);
+		rhs -=
+		  (mf_s[i + latsize * b] * s[i + latsize * g] +
+		   mf_cmat[((g + 3 * b) * latsize * latsize) +
+			   (i + latsize * i)]) * eps (m, b, g) * jvec[b];
+	      }
+	  }
 	dsdt[i + latsize * m] = 2.0 * rhs;
       }
 
   //Update the correlations in dgdt DEBUG THIS ONLY!!!
-  for (n = 0; n < 3; n++)
-    for (m = n; m < 3; m++)
+  for (m = 0; m < 3; m++)
+    for (n = m; n < 3; n++)
       for (i = 0; i < latsize; i++)
 	for (j = 0; j < latsize; j++)
 	  {
-	    rhs = 0.0;
-	    for (b = 0; b < 3; b++)
+	    if (i != j)
 	      {
-		rhs -=
-		  (jvec[n] * s[i + latsize * b] -
-		   jvec[m] * s[j + latsize * b]) * hopmat[j +
-							  latsize * i] *
-		  eps (m, n, b);
-	      }
-	    for (b = 0; b < 3; b++)
-	      for (g = 0; g < 3; g++)
-		{
-		  rhs -=
-		    (hvec[b] + jvec[b] * (mf_s[i + latsize * b] -
-					  hopmat[j + latsize * i] * s[j +
-								      latsize
-								      * b])) *
-		    cmat[((n + 3 * g) * latsize * latsize) +
-			 (j + latsize * i)] * eps (b, g,
-						   m) + (hvec[b] +
-							 jvec[b] *
-							 (mf_s
-							  [j + latsize * b] -
-							  hopmat[i +
+		rhs = 0.0;
+		for (b = 0; b < 3; b++)
+		  {
+		    rhs -=
+		      (jvec[n] * s[i + latsize * b] -
+		       jvec[m] * s[j + latsize * b]) * hopmat[j +
+							      latsize * i] *
+		      eps (m, n, b);
+		  }
+		for (b = 0; b < 3; b++)
+		  for (g = 0; g < 3; g++)
+		    {
+		      rhs -=
+			(hvec[b] + jvec[b] * (mf_s[i + latsize * b] -
+					      hopmat[j + latsize * i] * s[j +
+									  latsize
+									  *
+									  b]))
+			* cmat[((n + 3 * g) * latsize * latsize) +
+			       (j + latsize * i)] * eps (b, g,
+							 m) + (hvec[b] +
+							       jvec[b] *
+							       (mf_s
+								[j +
 								 latsize *
-								 j] * s[i +
-									latsize
-									*
-									b])) *
-		    cmat[((g + 3 * m) * latsize * latsize) +
-			 (j + latsize * i)] * eps (b, g, n);
+								 b] -
+								hopmat[i +
+								       latsize
+								       * j] *
+								s[i +
+								  latsize *
+								  b])) *
+			cmat[((g + 3 * m) * latsize * latsize) +
+			     (j + latsize * i)] * eps (b, g, n);
 
-		  rhs -= (mf_cmat
-			  [((n + 3 * b) * latsize * latsize) +
-			   (j + latsize * i)] - hopmat[j +
-						       latsize * i] *
-			  cmat[((n + 3 * b) * latsize * latsize) +
-			       (j + latsize * j)]) * s[i +
-						       latsize * g] * eps (b,
-									   g,
-									   m)
-		    * jvec[b] +
-		    (mf_cmat
-		     [((m + 3 * b) * latsize * latsize) + (j + latsize * i)] -
-		     hopmat[i +
-			    latsize * j] * cmat[((m + 3 * b) * latsize *
-						 latsize) + (i +
-							     latsize * i)]) *
-		    s[j + latsize * g] * eps (b, g, n) * jvec[b];
+		      rhs -= mf_cmat
+			[((n + 3 * b) * latsize * latsize) +
+			 (j + latsize * i)] * s[i +
+						latsize * g] * eps (b,
+								    g,
+								    m)
+			* jvec[b] +
+			mf_cmat
+			[((m + 3 * b) * latsize * latsize) +
+			 (j + latsize * i)] * s[j + latsize * g] * eps (b, g,
+									n) *
+			jvec[b];
 
-		  //Last term in the rhs of eqs (B.4b) in arXiv:1510.03768 
-		  lastterm1 =
-		    cmat[((g + 3 * b) * latsize * latsize) +
-			 (j + latsize * i)] + s[i + 3 * b] * s[j + 3 * g];
-		  lastterm1 *= s[i + latsize * m] * eps (b, g, n);
+		      //Last term in the rhs of eqs (B.4b) in arXiv:1510.03768 
+		      lastterm1 =
+			cmat[((g + 3 * b) * latsize * latsize) +
+			     (j + latsize * i)] + s[i + 3 * b] * s[j + 3 * g];
+		      lastterm1 *= s[i + latsize * m] * eps (b, g, n);
 
-		  lastterm2 =
-		    cmat[((b + 3 * g) * latsize * latsize) +
-			 (j + latsize * i)] + s[i + 3 * g] * s[j + 3 * b];
-		  lastterm2 *= s[i + latsize * n] * eps (b, g, m);
+		      lastterm2 =
+			cmat[((b + 3 * g) * latsize * latsize) +
+			     (j + latsize * i)] + s[i + 3 * g] * s[j + 3 * b];
+		      lastterm2 *= s[i + latsize * n] * eps (b, g, m);
 
-		  rhs +=
-		    (lastterm1 + lastterm2) * hopmat[j +
-						     latsize * i] * jvec[b];
-		}
-	    dcdt_mat[((n + 3 * m) * latsize * latsize) + (j + latsize * i)] =
-	      2.0 * rhs;
-	    dcdt_mat[((m + 3 * n) * latsize * latsize) + (i + latsize * j)] =
-	      2.0 * rhs;
+		      rhs +=
+			(lastterm1 + lastterm2) * hopmat[j +
+							 latsize * i] *
+			jvec[b];
+		    }
+		dcdt_mat[((n + 3 * m) * latsize * latsize) +
+			 (j + latsize * i)] = 2.0 * rhs;
+		dcdt_mat[((m + 3 * n) * latsize * latsize) +
+			 (i + latsize * j)] = 2.0 * rhs;
+	      }
+	    else
+	      {
+		dcdt_mat[((n + 3 * m) * latsize * latsize) +
+			 (j + latsize * i)] = 0.0;
+	      }
 	  }
 
   return 0;
