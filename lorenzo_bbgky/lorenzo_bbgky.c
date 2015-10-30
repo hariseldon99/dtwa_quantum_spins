@@ -102,7 +102,7 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
 	dsdt[i + latsize * m] = 2.0 * rhs;
       }
 
-  //Update the correlations in dgdt DEBUG THIS ONLY!!!
+  //Update the correlations in dgdt 
   for (m = 0; m < 3; m++)
     for (n = m; n < 3; n++)
       for (i = 0; i < latsize; i++)
