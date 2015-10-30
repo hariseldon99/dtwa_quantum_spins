@@ -247,11 +247,6 @@ Relevant Literature:
 1. Let the final output be a matrix of spins at end time AND observables. Let the user calculate what he wants and distribute the memory via multiple MPI communicators.
 
 2. Incorporate Lorenzo's code for the BBGKY function. His code is faster and better optimized. This can be done by either:
-   
-   a. Creating an actual extension module in C. Probably overkill, and I'd also like to avoid the overhead of learning 
-      extension writing.
-   
-   b. Do the whole thing in Python, using ctypes to communicate with the external library. Apparently this might be too slow      for repeated calls.
 
 3. Add the dynamics of open quantum systems (Lindblad) as a separate class similar to 'Dtwa_System', and add CPython 
    module of the same to lorenzo_bbgky
