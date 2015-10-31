@@ -26,5 +26,7 @@ __version__   = '0.1'
 __author__    = 'Analabha Roy'
 __credits__   = 'Lorenzo Pucci, NiTheP Stellenbosch'
 
-__all__ = ["dtwa_quantum_spins", "reductions","redirect_stdout"]
-from dtwa_quantum_spins import *
+__all__ = ["dtwa_only", "dtwa_bbgky", "dtwa_bbgky_opt"]
+from dtwa_only import *
+from dtwa_bbgky import *
+from dtwa_bbgky_opt import *
