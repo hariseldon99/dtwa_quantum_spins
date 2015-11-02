@@ -1,0 +1,2 @@
+include lorenzo_bbgky/*.h
+include LICENSE README.md *.png
