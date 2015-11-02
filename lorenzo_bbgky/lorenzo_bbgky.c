@@ -61,6 +61,11 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
 	    hopmat[j + latsize * i] = hopmat[i + latsize * j];
 	  }
     }
+  //Set the diagonals of cmats to 0
+  for (b = 0; b < 3; b++)
+    for (g = 0; g < 3; g++)
+      for (i = 0; i < latsize; i++)
+	cmat[((g + 3 * b) * latsize * latsize) + (i + latsize * i)] = 0.0;
 
   //Calculate the mean field contributions:
   //mf_s^\alpha_i =  \sum_k s^\alpha_k * hopmat_{ki}
@@ -108,82 +113,77 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
       for (i = 0; i < latsize; i++)
 	for (j = 0; j < latsize; j++)
 	  {
-	    if (i != j)
-	      {
-		rhs = 0.0;
-		for (b = 0; b < 3; b++)
-		  {
-		    rhs -=
-		      (jvec[n] * s[i + latsize * b] -
-		       jvec[m] * s[j + latsize * b]) * hopmat[j +
-							      latsize * i] *
-		      eps (m, n, b);
-		  }
-		for (b = 0; b < 3; b++)
+	    rhs = 0.0;
+	    {
+	      for (b = 0; b < 3; b++)
+		{
+		  rhs -=
+		    (jvec[n] * s[i + latsize * b] -
+		     jvec[m] * s[j + latsize * b]) * hopmat[j +
+							    latsize * i] *
+		    eps (m, n, b);
 		  for (g = 0; g < 3; g++)
 		    {
 		      rhs -=
-			(hvec[b] + jvec[b] * (mf_s[i + latsize * b] -
-					      hopmat[j + latsize * i] * s[j +
-									  latsize
-									  *
-									  b]))
-			* cmat[((n + 3 * g) * latsize * latsize) +
-			       (j + latsize * i)] * eps (b, g,
-							 m) + (hvec[b] +
-							       jvec[b] *
-							       (mf_s
-								[j +
-								 latsize *
-								 b] -
-								hopmat[i +
-								       latsize
-								       * j] *
-								s[i +
-								  latsize *
-								  b])) *
+			(hvec[b] +
+			 jvec[b] * (mf_s[i + latsize * b] -
+				    hopmat[j + latsize * i] * s[j +
+								latsize *
+								b])) *
+			cmat[((n + 3 * g) * latsize * latsize) +
+			     (j + latsize * i)] * eps (b, g,
+						       m) + (hvec[b] +
+							     jvec[b] *
+							     (mf_s
+							      [j +
+							       latsize * b] -
+							      hopmat[i +
+								     latsize *
+								     j] *
+							      s[i +
+								latsize *
+								b])) *
 			cmat[((g + 3 * m) * latsize * latsize) +
 			     (j + latsize * i)] * eps (b, g, n);
 
-		      rhs -= mf_cmat
-			[((n + 3 * b) * latsize * latsize) +
-			 (j + latsize * i)] * s[i +
-						latsize * g] * eps (b,
-								    g,
-								    m)
+		      rhs -=
+			mf_cmat[((n + 3 * b) * latsize * latsize) +
+				(j + latsize * i)] * s[i +
+						       latsize * g] * eps (b,
+									   g,
+									   m)
 			* jvec[b] +
-			mf_cmat
-			[((m + 3 * b) * latsize * latsize) +
-			 (j + latsize * i)] * s[j + latsize * g] * eps (b, g,
-									n) *
-			jvec[b];
+			mf_cmat[((m + 3 * b) * latsize * latsize) +
+				(i + latsize * j)] * s[j +
+						       latsize * g] * eps (b,
+									   g,
+									   n)
+			* jvec[b];
 
 		      //Last term in the rhs of eqs (B.4b) in arXiv:1510.03768 
 		      lastterm1 =
-			cmat[((g + 3 * b) * latsize * latsize) +
-			     (j + latsize * i)] + s[i + 3 * b] * s[j + 3 * g];
-		      lastterm1 *= s[i + latsize * m] * eps (b, g, n);
+			(cmat[((g + 3 * b) * latsize * latsize) +
+			      (j + latsize * i)] + s[i + 3 * b] * s[j +
+								    3 * g]) *
+			s[i + latsize * m] * eps (b, g, n);
 
 		      lastterm2 =
-			cmat[((b + 3 * g) * latsize * latsize) +
-			     (j + latsize * i)] + s[i + 3 * g] * s[j + 3 * b];
-		      lastterm2 *= s[i + latsize * n] * eps (b, g, m);
-
+			(cmat[((b + 3 * g) * latsize * latsize) +
+			      (j + latsize * i)] + s[i + 3 * g] * s[j +
+								    3 * b]) *
+			s[j + latsize * n] * eps (b, g, m);
 		      rhs +=
 			(lastterm1 + lastterm2) * hopmat[j +
 							 latsize * i] *
 			jvec[b];
 		    }
-		dcdt_mat[((n + 3 * m) * latsize * latsize) +
-			 (j + latsize * i)] = 2.0 * rhs;
-		dcdt_mat[((m + 3 * n) * latsize * latsize) +
-			 (i + latsize * j)] = 2.0 * rhs;
-	      }
-	    else
-	      {
-		dcdt_mat[((n + 3 * m) * latsize * latsize) +
-			 (j + latsize * i)] = 0.0;
-	      }
+		}
+
+	    }
+	    dcdt_mat[((n + 3 * m) * latsize * latsize) +
+		     (j + latsize * i)] = 2.0 * rhs;
+	    dcdt_mat[((m + 3 * n) * latsize * latsize) +
+		     (i + latsize * j)] = 2.0 * rhs;
 	  }
 
   return 0;
