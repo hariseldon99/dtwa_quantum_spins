@@ -172,53 +172,53 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
   //Last term of bbgky dynamics eq (B4.b) in PRM i.e. arXiv:1510.03768
   //Need to run over all indices here, no symmetrization
   /*There is a bug here. */
-//   for (m = 0; m < 3; m++)
-//     for (n = 0; n < 3; n++)
-//       for (i = 0; i < latsize; i++)
-// 	for (j = 0; j < latsize; j++)
-// 	  {
-// 	    rhs = 0.0;
-// 	    for (b = 0; b < 3; b++)
-// 	      for (g = 0; g < 3; g++)
-// 		{
-// 		  rhs +=
-// 		    jvec[b] * hopmat[j +
-// 				     latsize * i] * (s[i +
-// 						       3 * m] *
-// 						     (cmat
-// 						      [(g +
-// 							3 * b) * latsize *
-// 						       latsize + (j +
-// 								  latsize *
-// 								  i)] + (s[i +
-// 									   3 *
-// 									   b]
-// 									 *
-// 									 s[j +
-// 									   3 *
-// 									   g])))
-// 		    * eps (b, g, n);
-// 		  rhs +=
-// 		    jvec[b] * hopmat[j +
-// 				     latsize * i] * (s[j +
-// 						       3 * n] *
-// 						     (cmat
-// 						      [(b +
-// 							3 * g) * latsize *
-// 						       latsize + (j +
-// 								  latsize *
-// 								  i)] + (s[i +
-// 									   3 *
-// 									   g]
-// 									 *
-// 									 s[j +
-// 									   3 *
-// 									   b])))
-// 		    * eps (b, g, m);
-// 		}
-// 	    dcdt_mat[((n + 3 * m) * latsize * latsize) +
-// 		     (j + latsize * i)] += 2.0 * rhs;
-// 	  }
+   for (m = 0; m < 3; m++)
+     for (n = 0; n < 3; n++)
+       for (i = 0; i < latsize; i++)
+ 	for (j = 0; j < latsize; j++)
+ 	  {
+ 	    rhs = 0.0;
+ 	    for (b = 0; b < 3; b++)
+ 	      for (g = 0; g < 3; g++)
+ 		{
+ 		  rhs +=
+ 		    jvec[b] * hopmat[j +
+ 				     latsize * i] * (s[i +
+ 						       3 * m] *
+ 						     (cmat
+ 						      [(g +
+ 							3 * b) * latsize *
+ 						       latsize + (j +
+ 								  latsize *
+ 								  i)] + (s[i +
+ 									   3 *
+ 									   b]
+ 									 *
+ 									 s[j +
+ 									   3 *
+ 									   g])))
+ 		    * eps (b, g, n);
+ 		  rhs +=
+ 		    jvec[b] * hopmat[j +
+ 				     latsize * i] * (s[j +
+ 						       3 * n] *
+ 						     (cmat
+ 						      [(b +
+ 							3 * g) * latsize *
+ 						       latsize + (j +
+ 								  latsize *
+ 								  i)] + (s[i +
+ 									   3 *
+ 									   g]
+ 									 *
+ 									 s[j +
+ 									   3 *
+ 									   b])))
+ 		    * eps (b, g, m);
+ 		}
+ 	    dcdt_mat[((n + 3 * m) * latsize * latsize) +
+ 		     (j + latsize * i)] += 2.0 * rhs;
+ 	  }
 
   return 0;
 }

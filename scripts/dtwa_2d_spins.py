@@ -7,7 +7,6 @@ import numpy as np
 import csv
 from mpi4py import MPI
 import sys
-sys.path.append("/home/daneel/gitrepos/dtwa_quantum_spins/build/lib.linux-x86_64-2.7/") 
 import dtwa_quantum_spins as dtwa
  
 def run_dtwa():
@@ -16,7 +15,7 @@ def run_dtwa():
   size = comm.Get_size()
 
   #Parameters
-  lattice_shapes = [(11,1)]
+  lattice_shapes = [(150,1)]
   alpha = 3.0
   jx, jy, jz = -0.5, -0.5, 0.0
   hx, hy, hz = 0.0, 0.0, 0.0
@@ -41,7 +40,7 @@ def run_dtwa():
 			      jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
 
     #Initiate the DTWA system with the parameters and niter
-    d = dtwa.Dtwa_BBGKY_System(p, comm, n_t=niter, seed_offset = 0, verbose=True)
+    d = dtwa.Dtwa_BBGKY_System_opt(p, comm, n_t=niter, seed_offset = 0, verbose=True)
 
     #Prepare the times
     t0 = 0.0
