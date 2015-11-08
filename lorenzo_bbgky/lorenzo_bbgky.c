@@ -113,6 +113,7 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
       for (i = 0; i < latsize; i++)
 	for (j = 0; j < latsize; j++)
 	  {
+	    if(i==j) continue;
 	    rhs = 0.0;
 	    {
 	      for (b = 0; b < 3; b++)
@@ -177,6 +178,7 @@ dsdgdt (double *wspace, double *s, double *hopmat, double *jvec, double *hvec,
        for (i = 0; i < latsize; i++)
  	for (j = 0; j < latsize; j++)
  	  {
+	   if(i==j) continue;
  	    rhs = 0.0;
  	    for (b = 0; b < 3; b++)
  	      for (g = 0; g < 3; g++)
