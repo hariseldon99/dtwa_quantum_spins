@@ -1,17 +1,6 @@
 from distutils.core import setup, Extension
 import numpy as np
 
-#Change these as needed
-blas_path = '/usr/lib'
-blas_headers = '/usr/include'
-
-lorenzo_bbgky = Extension('lorenzo_bbgky',\
-  include_dirs = [np.get_include(),blas_headers],\
-    libraries = ['blas'],\
-      library_dirs = [blas_path],\
-	sources = ['lorenzo_bbgky/bbgkymodule.c', \
-	  'lorenzo_bbgky/lorenzo_bbgky.c'])
- 
 setup (name = 'dtwa_quantum_spins',
         version = '1.0',
         description = """Discrete Truncated Wigner Approximation 
@@ -69,5 +58,5 @@ setup (name = 'dtwa_quantum_spins',
 	    'Programming Language :: Python :: 2.6',
 	    'Programming Language :: Python :: 2.7',
 	],
-        packages=['dtwa_quantum_spins','lorenzo_bbgky'],
-        ext_modules = [lorenzo_bbgky])
+        packages=['dtwa_quantum_spins'],
+        )

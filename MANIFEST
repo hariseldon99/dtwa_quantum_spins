@@ -13,6 +13,3 @@ dtwa_quantum_spins/dtwa_only.py
 dtwa_quantum_spins/funcs.py
 dtwa_quantum_spins/redirect_stdout.py
 dtwa_quantum_spins/reductions.py
-lorenzo_bbgky/bbgkymodule.c
-lorenzo_bbgky/lorenzo_bbgky.c
-lorenzo_bbgky/lorenzo_bbgky.h
