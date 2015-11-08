@@ -8,7 +8,6 @@ dtwa_quantum_spins/__init__.py
 dtwa_quantum_spins/classes.py
 dtwa_quantum_spins/consts.py
 dtwa_quantum_spins/dtwa_bbgky.py
-dtwa_quantum_spins/dtwa_bbgky_opt.py
 dtwa_quantum_spins/dtwa_only.py
 dtwa_quantum_spins/funcs.py
 dtwa_quantum_spins/redirect_stdout.py

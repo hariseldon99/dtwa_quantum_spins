@@ -75,8 +75,6 @@ Example 1: Obtaining Documentation
 ```python
 >>> import dtwa_quantum_spins as dtwa
 >>> help(dtwa)
->>> import lorenzo_bbgky as lb
->>> help(lb)
 ```
 
 Example 2:
@@ -108,9 +106,6 @@ d = dtwa.Dtwa_System(p, MPI_COMMUNICATOR, n_t=number_of_sampled_trajectories, ve
 
 #This object sets up the DTWA system with BBGKY corrections and the parameters and niter
 d = dtwa.Dtwa_BBGKY_System(p, comm, n_t=niter, seed_offset = 0, verbose=True)
-
-#This object sets up the DTWA system with BBGKY corrections using CPython optimizations and the parameters and niter
-d = dtwa.Dtwa_BBGKY_System_opt(p, comm, n_t=niter, seed_offset = 0, verbose=True)
 
 #Prepare the times
 t0 = 0.0
@@ -237,18 +232,7 @@ Relevant Literature:
     
     _\_-tabulate (Used for dumping tabular data)
 
-5. Lorenzo's bbgky module
-
-    _\_-gcc/automake (compilers for the C module)
-    
-    _\_-cblas - Any BLAS library written in C
-
 ###TODO:
 1. Let the final output be a matrix of spins at end time AND observables. Let the user calculate what he wants and distribute the memory via multiple MPI communicators.
-
-2. Incorporate Lorenzo's code for the BBGKY function. His code is faster and better optimized. This can be done by either:
-
-3. Add the dynamics of open quantum systems (Lindblad) as a separate class similar to 'Dtwa_System', and add CPython 
-   module of the same to lorenzo_bbgky
 
 4. Lots of work on the docs
