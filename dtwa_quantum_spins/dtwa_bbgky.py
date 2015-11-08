@@ -67,8 +67,8 @@ def func_dtwa_bbgky(s, t, param):
 	np.einsum("l,kn,lanm,lkb->abmn", param.jvec, stensor, \
 	  Gtensor, eijk)  
  
-    #dgdt += np.einsum("almn,lkmn,lkb->abmn", Mtensor, dtensor, eijk)\
-      #+ np.einsum("blnm,lknm,lka->abmn", Mtensor, dtensor, eijk)
+    dgdt += np.einsum("almn,lkmn,lkb->abmn", Mtensor, dtensor, eijk)\
+      + np.einsum("blnm,lknm,lka->abmn", Mtensor, dtensor, eijk)
  
     #Flatten it before returning
     return np.concatenate((dsdt.flatten(), 2.0 * dgdt.flatten()))
