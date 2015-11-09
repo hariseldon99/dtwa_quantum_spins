@@ -5,7 +5,7 @@ import numpy as np
 from itertools import starmap
 import operator as op
 from consts import *
-
+from scipy.sparse import dia_matrix
 class ParamData:
     """Class that stores Hamiltonian and lattice parameters 
        to be used in each dTWA instance. This class has no 
