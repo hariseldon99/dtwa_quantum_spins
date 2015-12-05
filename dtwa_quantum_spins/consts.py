@@ -9,3 +9,12 @@ deltaij = eye(3)
 eijk = zeros((3, 3, 3))
 eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
 eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+
+#Progressbar widgets
+try:
+  from progressbar import Bar, Counter, ETA, Percentage
+  pbar_avail = True
+  widgets_bbgky = ['BBGKY Dynamics (MPI root): ', Percentage(), ' ', Bar(), ' ', ETA()]
+except ImportError:
+  pbar_avail = False
+  widgets = None

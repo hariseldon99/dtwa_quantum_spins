@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import division, print_function
 
-
 from mpi4py import MPI
 from reductions import Intracomm
 from redirect_stdout import stdout_redirected
@@ -186,6 +185,11 @@ class Dtwa_System:
       while iterator < self.n_t:
 	  nt_loc += 1
 	  iterator += comm.size
+       if pbar_avail:
+	if self.comm.rank == root and self.verbose: 
+	  pbar_max = nt_loc
+	  bar = progressbar.ProgressBar(widgets=widgets_bbgky,\
+	    max_value=pbar_max, redirect_stdout=False)	  	  
       #Scatter unique seeds for generating unique random number arrays :
       #each processor gets its own nt_loc seeds, and allocates nt_loc 
       #initial conditions. Each i.c. is a 2N sized array
@@ -261,7 +265,9 @@ class Dtwa_System:
 	    sz_expct, sx_var, sy_var, sz_var, sxy_var, sxz_var, \
 	      syz_var, self)
 	  list_of_local_data.append(localdata)
-	  
+	  if self.verbose and pbar_avail and self.comm.rank == root:
+	    bar.update(runcount)
+	    
       #After loop above  sum reduce (don't forget to average) all locally
       #calculated expectations at each time to root
       outdat = \

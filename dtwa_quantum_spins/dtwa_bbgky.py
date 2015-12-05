@@ -22,6 +22,13 @@ try:
 except ImportError:
   mkl_avail = False
 
+#Try to import progressbars if available
+try:
+    import progressbar
+    pbar_avail = True
+except ImportError:
+    pbar_avail = False
+ 
 def func_dtwa_bbgky(s, t, param):
     """
     The RHS of general case, second order correction, per Lorenzo
@@ -297,6 +304,12 @@ class Dtwa_BBGKY_System:
       while iterator < self.n_t:
 	  nt_loc += 1
 	  iterator += comm.size
+      if pbar_avail:
+	if self.comm.rank == root and self.verbose: 
+	  pbar_max = nt_loc
+	  bar = progressbar.ProgressBar(widgets=widgets_bbgky,\
+	    max_value=pbar_max, redirect_stdout=False)	  
+	  
       #Scatter unique seeds for generating unique random number arrays :
       #each processor gets its own nt_loc seeds, and allocates nt_loc 
       #initial conditions. Each i.c. is a 2N sized array
@@ -356,6 +369,8 @@ class Dtwa_BBGKY_System:
 	  s = np.array(s, dtype="float128")#Widen memory to reduce overflows
 	  localdata = bbgky_observables(t_output, s, self)
 	  list_of_local_data.append(localdata)
+	  if self.verbose and pbar_avail and self.comm.rank == root:
+	    bar.update(runcount)
 	  
       #After loop above  sum reduce (don't forget to average) all locally
       #calculated expectations at each time to root
@@ -374,7 +389,7 @@ class Dtwa_BBGKY_System:
       if rank == root:
 	  outdat.normalize_data(self.n_t, N)
 	  if self.verbose:
-	    print("t-deriv of Hamilt (abs square) with wigner avg: ")
+	    print("\nt-deriv of Hamilt (abs square) with wigner avg: ")
 	    print("  ")
 	    print(tabulate({"time": t_output, \
 	      "dhwdt_abs": dhwdt_abs_totals}, \
