@@ -185,11 +185,11 @@ class Dtwa_System:
       while iterator < self.n_t:
 	  nt_loc += 1
 	  iterator += comm.size
-       if pbar_avail:
-	if self.comm.rank == root and self.verbose: 
-	  pbar_max = nt_loc
-	  bar = progressbar.ProgressBar(widgets=widgets_bbgky,\
-	    max_value=pbar_max, redirect_stdout=False)	  	  
+      if pbar_avail:
+          if self.comm.rank == root and self.verbose:
+              pbar_max = nt_loc-1
+	      bar = progressbar.ProgressBar(widgets=widgets_bbgky,\
+                      max_value=pbar_max, redirect_stdout=False)	  	  
       #Scatter unique seeds for generating unique random number arrays :
       #each processor gets its own nt_loc seeds, and allocates nt_loc 
       #initial conditions. Each i.c. is a 2N sized array

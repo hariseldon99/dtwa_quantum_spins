@@ -306,7 +306,7 @@ class Dtwa_BBGKY_System:
 	  iterator += comm.size
       if pbar_avail:
 	if self.comm.rank == root and self.verbose: 
-	  pbar_max = nt_loc
+	  pbar_max = nt_loc-1
 	  bar = progressbar.ProgressBar(widgets=widgets_bbgky,\
 	    max_value=pbar_max, redirect_stdout=False)	  
 	  
