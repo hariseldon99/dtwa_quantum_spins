@@ -235,7 +235,5 @@ Relevant Literature:
 ###TODO:
 1. Let the final output be a matrix of spins at end time AND observables. Let the user calculate what he wants and distribute the memory via multiple MPI communicators.
 2. How to handle the MemoryError for large hopping matrices:
-    * Find out (for N~10000) where the MemoryError exception is raised
-    * Put the code in a "try" block
-    * If MemoryError is raised, use np.memmap to write the matrix (initiate memmap in disk with precalculated size filled with 0)
+   * Write in README above docs for using np.memmap for the hopping matrix
 3. Lots of work on the docs
