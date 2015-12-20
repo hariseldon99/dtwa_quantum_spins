@@ -237,3 +237,4 @@ Relevant Literature:
 2. How to handle the MemoryError for large hopping matrices:
    * Write in README above docs for using np.memmap for the hopping matrix
 3. Lots of work on the docs
+4. Write the site-site correlations as functions of time via parallel hdf5
