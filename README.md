@@ -5,8 +5,7 @@ Dynamics of quantum spins with homogeneous fields using the Discrete Truncated W
 
 Introduction
 -----
-The Hamiltonian
-that has been coded is the general Curie-Weiss - type hamiltonian
+The Hamiltonian that has been coded is the general Curie-Weiss - type hamiltonian
 
 ![equation](./hamilt.png)
 
