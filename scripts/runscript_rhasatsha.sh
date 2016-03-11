@@ -8,7 +8,7 @@
 #PBS -V
 #########################################################################
 ##Output file. Combine stdout and stderr into one
-#PBS -j oe ${PBS_JOBNAME}.o${PBS_JOBID}
+#PBS -j oe 
 #########################################################################
 ##Number of nodes and procs per node.
 ##The ib at the end means infiniband. Use that or else MPI gets confused 
