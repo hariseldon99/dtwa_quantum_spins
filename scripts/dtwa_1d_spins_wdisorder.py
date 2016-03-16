@@ -8,7 +8,7 @@ import csv
 from mpi4py import MPI
 import sys
 import dtwa_quantum_spins as dtwa
-from random import choice
+from random import seed, choice
 
 def run_dtwa():
   comm = MPI.COMM_WORLD
@@ -22,9 +22,10 @@ def run_dtwa():
   hx, hy, hz = 1.0, 0.0, 0.0
   niter = 5000
   choices = [-1,1]
+  s = 9 #Seed
  
   for alpha in alphas:
-    
+    seed(s)
     #Build the hopping matrix
     size = lattice_size
     jmat = np.zeros((size, size))
