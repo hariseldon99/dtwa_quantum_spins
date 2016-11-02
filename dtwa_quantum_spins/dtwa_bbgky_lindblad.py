@@ -6,7 +6,8 @@ from reductions import Intracomm
 from redirect_stdout import stdout_redirected
 import copy
 import numpy as np
-from scipy.integrate import odeint
+#from scipy.integrate import odeint
+from odeintw import odeintw
 from pprint import pprint
 from tabulate import tabulate
 
@@ -32,35 +33,43 @@ except ImportError:
  
 def func_dtwa_bbgky_lindblad(s, t, param):
     """
-    The RHS of general case, second order correction, per Lorenzo
-    "J" is the J_{ij} hopping matrix
-    -\partial_t |s^x> = -first order + 2 (J^y  Jg^{yz} - J^z  Jg^{zy})
-								  /norm,
-    -\partial_t |s^y> = -first order + 2 (-J^z  Jg^{zx} + J^x  Jg^{xz})
-								  /norm,
-    -\partial_t |s^z> = -first order + 2 (-J^x  Jg^{xy} + J^y  Jg^{yx})
-								  /norm.
+    Lindblad Decoherence terms added to func_dtwa_bbgky
     """
     N = param.latsize
+    dsgdt_closed = func_dtwa_bbgky(s, t, param)
     #svec  is the tensor s^l_\mu
     #G = s[3*N:].reshape(3,3,N,N) is the tensor g^{ab}_{\mu\nu}.
     sview = s.view()
+    dsview_c = dsgdt_closed.view()
+    
     stensor = sview[0:3*N].reshape(3, N)
-    gtensor = sview[3*N:].reshape(3, 3, N, N)
+    dstensor_c = dsview_c[0:3*N].reshape(3, N)
+    
+    gtensor = sview[3*N:].reshape(3, 3, N, N)    
+    dgtensor_c = dsview_c[3*N:].reshape(3, 3, N, N)
     gtensor[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
-      
-    htensor = np.zeros_like(stensor)
-    htensor[0].fill(param.hvec[0])
-    htensor[1].fill(param.hvec[1])
-    htensor[2].fill(param.hvec[2])
-    Gtensor = np.einsum("mg,abgn->abmn", param.jmat, gtensor)/param.norm
-    Mtensor = np.einsum("am,b,mn->abmn", stensor, param.jvec, \
-      param.jmat)/param.norm
-    hvec_dressed = htensor + np.einsum("llgm->lm", Mtensor)
-    dtensor = gtensor + np.einsum("am,bn", stensor, stensor)
-    s_and_g_closed = func_dtwa_bbgky(s, t, param)
+    dgtensor_c[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
+    #CHECK THESE COEFFICIENTS
+    dsxdt = dstensor_c[0,:] - (0.5 * param.gamma_r + 0.75 * param.gamma_el) * stensor[0,:]
+    dsydt = dstensor_c[1,:] - (0.5 * param.gamma_r + 0.75 * param.gamma_el) * stensor[1,:]
+    dszdt = dstensor_c[2,:] - (1.5 * param.gamma_r - 0.25 * param.gamma_el) * stensor[2,:]
+    dgdt = dgtensor_c - (1.5 * param.gamma_r + param.gamma_el) * gtensor
+    
+    dgdt[0,0,:,:] += 1j * param.gamma_r * gtensor[0,0,:,:]
+    dgdt[1,1,:,:] += 1j * param.gamma_r * gtensor[1,1,:,:]
+    dgdt[2,2,:,:] += 1j * param.gamma_el * gtensor[1,1,:,:]
+    
+    dgdt[0,1,:,:] += 1j * param.gamma_r * gtensor[0,1,:,:]
+    dgdt[0,2,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[0,2,:,:]
+    dgdt[1,2,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[1,2,:,:]
+    
+    dgdt[1,0,:,:] += 1j * param.gamma_r * gtensor[1,0,:,:]
+    dgdt[2,0,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[2,0,:,:]
+    dgdt[2,1,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[2,1,:,:]
+
+    dgdt[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
     #Flatten it before returning
-    return np.concatenate((dsdt.flatten(), 2.0 * dgdt.flatten()))
+    return np.concatenate((dsxdt.flatten(),dsydt.flatten(),dszdt.flatten(), dgdt.flatten()))
 
 class Dtwa_BBGKY_Lindblad_System:
   """
@@ -77,7 +86,7 @@ class Dtwa_BBGKY_Lindblad_System:
   """
 
   def __init__(self, params, mpicomm, n_t=2000,\
-			  seed_offset=0, verbose=True):
+			  seed_offset=0, decoherence=None ,verbose=True):
     """
     Initiates an instance of the Dtwa_System class. Copies parameters
     over from an instance of ParamData and stores precalculated objects .
@@ -103,6 +112,9 @@ class Dtwa_BBGKY_Lindblad_System:
 			  separate dTWA objects have uniquely random initial 
 			  states by changing seed_offset.
 			  Defaults to 0.
+       decoherence      = Decoherence amplitudes as defined in Foss-Feig.
+                      Enter as tuple (Gamma_ud, Gamma_du, Gamma_el)
+                      Defaults to None
        verbose		= Boolean for choosing verbose outputs. Setting 
 			  to 'True' dumps verbose output to stdout, which
 			  consists of full output from the integrator, as
@@ -121,7 +133,12 @@ class Dtwa_BBGKY_Lindblad_System:
     self.seed_offset = seed_offset
     #Booleans for verbosity and for calculating site data
     self.verbose = verbose
-
+    if decoherence is not None:
+        self.gamma_ud, self.gamma_du, self.gamma_el = decoherence
+    else:
+        self.gamma_ud, self.gamma_du, self.gamma_el = 0.0, 0.0, 0.0
+    self.gamma_r = self.gamma_ud + self.gamma_du
+    
   def dtwa_bbgky(self, time_info, sampling):
       comm = self.comm
       old_settings = np.seterr(all='ignore') #Prevent overflow warnings
@@ -189,15 +206,15 @@ class Dtwa_BBGKY_Lindblad_System:
 
       for runcount in xrange(0, nt_loc, 1):
 	  s_init_spins, s_init_corrs = sample(self, sampling, \
-	    local_seeds[runcount] + self.seed_offset)
+	    local_seeds[runcount] + self.seed_offset, complexify=True)
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
-		s, info = odeint(func_dtwa_bbgky_lindblad, \
+		s, info = odeintw(func_dtwa_bbgky_lindblad, \
 		  np.concatenate((s_init_spins, s_init_corrs)),t_output, \
 		    args=(self,), Dfun=None, full_output=True)
 	    else:
-		s = odeint(func_dtwa_bbgky_lindblad, \
+		s = odeintw(func_dtwa_bbgky_lindblad, \
 		  np.concatenate((s_init_spins, s_init_corrs)), t_output, \
 		    args=(self,), Dfun=None)
 	  
@@ -209,7 +226,7 @@ class Dtwa_BBGKY_Lindblad_System:
 	    dhwdt_abs2 = np.square(dhwdt) 
 	    list_of_dhwdt_abs2.extend(dhwdt_abs2)
 	  
-	  s = np.array(s, dtype="float128")#Widen memory to reduce overflows
+	  s = np.array(s, dtype=np.complex128)#Widen memory to reduce overflows
 	  localdata = bbgky_observables(t_output, s, self)
 	  list_of_local_data.append(localdata)
 	  if self.verbose and pbar_avail and self.comm.rank == root:

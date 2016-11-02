@@ -203,6 +203,7 @@ Relevant Literature:
 * [Anatoli : Ann. Phys 325 (2010) 1790-1852](http://arxiv.org/abs/0905.3384)
 * [Mauritz: New J. Phys. 15, 083007 (2013)](http://arxiv.org/abs/1209.3697)
 * [Schachenmayer: Phys. Rev. X 5 011022 (2015)](http://arxiv.org/abs/1408.4441)
+* [Foss-Feig: Physical Review A 87, 042101 (2013)](https://arxiv.org/abs/1209.5795)
 
 ###Relevant docs for the bundled version of mpi4py reduce:
 * [GitHub](https://github.com/mpi4py/mpi4py/blob/master/demo/reductions/reductions.py)
@@ -222,6 +223,8 @@ Relevant Literature:
     _\_-integrate 
 
     _| \_-odeint (Integrates the BBGKY dynamics of the sampled state)
+   
+    _| _| \_ odeintw (Complex wrapper for odeint available at https://github.com/WarrenWeckesser/odeintw)
 
     _| \_-signal 
     
@@ -232,8 +235,9 @@ Relevant Literature:
     _\_-tabulate (Used for dumping tabular data)
 
 ###TODO:
-1. Let the final output be a matrix of spins at end time AND observables. Let the user calculate what he wants and distribute the memory via multiple MPI communicators.
+1. Add a module for decoherence dynamics with Raman and Rayleigh dissipation using Lindblad superoperators in the BBGKY heirarchy.
 2. How to handle the MemoryError for large hopping matrices:
    * Write in README above docs for using np.memmap for the hopping matrix
 3. Lots of work on the docs
-4. Write the site-site correlations as function of time via parallel hdf5
+4. Write the site-site correlations as function of time via parallel hdf5 or whatever
+

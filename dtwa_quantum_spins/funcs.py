@@ -5,7 +5,7 @@ from scipy.signal import fftconvolve
 from consts import *
 from classes import *
 
-def sample(param, sampling, seed):
+def sample(param, sampling, seed, complexify=False):
   """
   Different phase space sampling schemes for the initial state,
   hardcoded as a fully polarized product state
@@ -37,6 +37,8 @@ def sample(param, sampling, seed):
     pass
   # Set initial correlations to 0.
   s_init_corrs = np.zeros(9*N*N)
+  if complexify:
+      s_init_spins, s_init_corrs = s_init_spins + 0j, s_init_corrs + 0j
   return s_init_spins, s_init_corrs
       
 def bbgky_observables(t_output, s, params):

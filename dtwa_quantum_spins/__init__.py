@@ -20,6 +20,7 @@ from __future__ import division, print_function
     *   Anatoli: Ann. Phys 325 (2010) 1790-1852
     *   Mauritz: arXiv:1209.3697
     *   Schachenmayer: arXiv:1408.4441
+    *   Foss-Feig:  arXiv:1209.5795
     * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 """
 __version__   = '0.1'
