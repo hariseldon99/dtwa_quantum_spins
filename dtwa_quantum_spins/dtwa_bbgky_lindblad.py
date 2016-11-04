@@ -50,9 +50,9 @@ def func_dtwa_bbgky_lindblad(s, t, param):
     gtensor[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
     dgtensor_c[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
     #CHECK THESE COEFFICIENTS
-    dsxdt = dstensor_c[0,:] - (0.5 * param.gamma_r + 0.75 * param.gamma_el) * stensor[0,:]
-    dsydt = dstensor_c[1,:] - (0.5 * param.gamma_r + 0.75 * param.gamma_el) * stensor[1,:]
-    dszdt = dstensor_c[2,:] - (1.5 * param.gamma_r - 0.25 * param.gamma_el) * stensor[2,:]
+    dsxdt = dstensor_c[0,:] - 0.5 * (param.gamma_r + param.gamma_el) * stensor[0,:]
+    dsydt = dstensor_c[1,:] - 0.5 * (param.gamma_r + param.gamma_el) * stensor[1,:]
+    dszdt = dstensor_c[2,:] - param.gamma_r * stensor[2,:]
     dgdt = dgtensor_c - (1.5 * param.gamma_r + param.gamma_el) * gtensor
     
     dgdt[0,0,:,:] += 1j * param.gamma_r * gtensor[0,0,:,:]
