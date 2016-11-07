@@ -49,23 +49,18 @@ def func_dtwa_bbgky_lindblad(s, t, param):
     dgtensor_c = dsview_c[3*N:].reshape(3, 3, N, N)
     gtensor[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
     dgtensor_c[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
-    #CHECK THESE COEFFICIENTS
     dsxdt = dstensor_c[0,:] - 0.5 * (param.gamma_r + param.gamma_el) * stensor[0,:]
     dsydt = dstensor_c[1,:] - 0.5 * (param.gamma_r + param.gamma_el) * stensor[1,:]
     dszdt = dstensor_c[2,:] - param.gamma_r * stensor[2,:]
-    dgdt = dgtensor_c - (1.5 * param.gamma_r + param.gamma_el) * gtensor
+    dgdt = dgtensor_c - (param.gamma_r + 0.5 * param.gamma_el) * gtensor
     
-    dgdt[0,0,:,:] += 1j * param.gamma_r * gtensor[0,0,:,:]
-    dgdt[1,1,:,:] += 1j * param.gamma_r * gtensor[1,1,:,:]
-    dgdt[2,2,:,:] += 1j * param.gamma_el * gtensor[1,1,:,:]
+    ampl = 0.5 * (param.gamma_r - param.gamma_el)
+    dgdt[0,0,:,:] += ampl * gtensor[0,0,:,:]
+    dgdt[1,1,:,:] += ampl * gtensor[1,1,:,:]
+    dgdt[2,2,:,:] -= ampl * gtensor[1,1,:,:]
     
-    dgdt[0,1,:,:] += 1j * param.gamma_r * gtensor[0,1,:,:]
-    dgdt[0,2,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[0,2,:,:]
-    dgdt[1,2,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[1,2,:,:]
-    
-    dgdt[1,0,:,:] += 1j * param.gamma_r * gtensor[1,0,:,:]
-    dgdt[2,0,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[2,0,:,:]
-    dgdt[2,1,:,:] += 0.5j * (param.gamma_r + param.gamma_el) * gtensor[2,1,:,:]
+    dgdt[0,1,:,:] += ampl * gtensor[0,1,:,:]
+    dgdt[1,0,:,:] += ampl * gtensor[1,0,:,:]
 
     dgdt[:,:,range(N),range(N)] = 0.0 #Set the diagonals of g_munu to 0
     #Flatten it before returning
