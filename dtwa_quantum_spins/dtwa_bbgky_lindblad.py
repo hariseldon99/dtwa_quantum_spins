@@ -7,7 +7,7 @@ from redirect_stdout import stdout_redirected
 import copy
 import numpy as np
 #from scipy.integrate import odeint
-from odeintw import odeintw
+from scipy.integrate import odeint
 from pprint import pprint
 from tabulate import tabulate
 
@@ -205,11 +205,11 @@ class Dtwa_BBGKY_Lindblad_System:
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
-		s, info = odeintw(func_dtwa_bbgky_lindblad, \
+		s, info = odeint(func_dtwa_bbgky_lindblad, \
 		  np.concatenate((s_init_spins, s_init_corrs)),t_output, \
 		    args=(self,), Dfun=None, full_output=True)
 	    else:
-		s = odeintw(func_dtwa_bbgky_lindblad, \
+		s = odeint(func_dtwa_bbgky_lindblad, \
 		  np.concatenate((s_init_spins, s_init_corrs)), t_output, \
 		    args=(self,), Dfun=None)
 	  

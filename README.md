@@ -223,8 +223,6 @@ Relevant Literature:
     _\_-integrate 
 
     _| \_-odeint (Integrates the BBGKY dynamics of the sampled state)
-   
-    _| _| \_ odeintw (Complex wrapper for odeint available at https://github.com/WarrenWeckesser/odeintw)
 
     _| \_-signal 
     
