@@ -201,7 +201,7 @@ class Dtwa_BBGKY_Lindblad_System:
 
       for runcount in xrange(0, nt_loc, 1):
 	  s_init_spins, s_init_corrs = sample(self, sampling, \
-	    local_seeds[runcount] + self.seed_offset, complexify=True)
+	    local_seeds[runcount] + self.seed_offset)
 	  #Redirect unwanted stdout warning messages to /dev/null
 	  with stdout_redirected():
 	    if self.verbose:
