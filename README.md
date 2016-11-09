@@ -233,7 +233,7 @@ Relevant Literature:
     _\_-tabulate (Used for dumping tabular data)
 
 ###TODO:
-1. Add a module for decoherence dynamics with Raman and Rayleigh dissipation using Lindblad superoperators in the BBGKY heirarchy.
+1. MIGRATE TO PYTHON 3. CHANGE ALL TABS TO SPACES FOR INDENTATION
 2. How to handle the MemoryError for large hopping matrices:
    * Write in README above docs for using np.memmap for the hopping matrix
 3. Lots of work on the docs
