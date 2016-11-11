@@ -12,9 +12,9 @@ eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
 
 #Progressbar widgets
 try:
-  from progressbar import Bar, Counter, ETA, Percentage
-  pbar_avail = True
-  widgets_bbgky = ['BBGKY Dynamics (MPI root): ', Percentage(), ' ', Bar(), ' ', ETA()]
+    from progressbar import Bar, Counter, ETA, Percentage
+    pbar_avail = True
+    widgets_bbgky = ['BBGKY Dynamics (MPI root): ', Percentage(), ' ', Bar(), ' ', ETA()]
 except ImportError:
-  pbar_avail = False
-  widgets = None
+    pbar_avail = False
+    widgets = None
