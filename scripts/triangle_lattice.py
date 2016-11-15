@@ -17,7 +17,7 @@ def run_dtwa():
     alphas = [0.7, 2]
     jx, jy, jz = 0.0, 0.0, -1.0
     hx, hy, hz = 1.0, 0.0, 0.0
-    niter = 5000
+    niter = 20000
 
     #Generate the lattice
     x = 0.5
@@ -31,7 +31,7 @@ def run_dtwa():
         points = np.vstack((points,newedge))
         edge = newedge
     #plt.plot(points[:,0], points[:,1], 'ro')
-    #plt.show
+    #plt.show()
     #lattice size
     N = points.shape[0]
     for alpha in alphas:
@@ -50,14 +50,14 @@ def run_dtwa():
         p = dtwa.ParamData(hopmat=J,norm=1.0, latsize=N,\
                               jx=jx, jy=jy, jz=jz, hx=hx, hy=hy, hz=hz)
         #Initiate the DTWA system with the parameters and niter
-        d = dtwa.Dtwa_BBGKY_System(p, comm, n_t=niter, \
-                            seed_offset = 0, verbose=True)
+        d = dtwa.Dtwa_BBGKY_Lindblad_System(p, comm, n_t=niter, \
+            seed_offset = 0, decoherence=(0.5, 0.5, 0.5), verbose=True)
         #Prepare the times
         t0 = 0.0
-        ncyc = 1.3
-        nsteps = 200
+        ncyc = 6.0
+        nsteps = 10000
 
-        data = d.evolve((t0, ncyc, nsteps))
+        data = d.evolve((t0, ncyc, nsteps), sampling="spr")
         if rank == 0:
             #Prepare the output files. One for each observable
             append_all = "_time_alpha_" + str(alpha) + "_N_"+str(N)+"_2ndorder.txt"
