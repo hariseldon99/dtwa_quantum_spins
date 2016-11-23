@@ -155,9 +155,8 @@ class Dtwa_System:
         self.seed_offset = seed_offset
         #Booleans for verbosity and for calculating site data
         self.verbose = verbose
-        N = params.latsize
 
-    def dtwa_only(self, time_info):
+    def dtwa_only(self, time_info,**odeint_kwargs):
         comm = self.comm
         N = self.latsize
         rank = comm.rank
@@ -222,20 +221,14 @@ class Dtwa_System:
             #s_init and store it as [s^x,s^x,s^x, .... s^y,s^y,s^y ...,
             #s^z,s^z,s^z, ...]
             s_init = np.concatenate((sx_init, sy_init, sz_init))
-            if self.verbose:
-                if self.jac:
-                    s, info = odeint(func_dtwa, s_init, t_output,\
-                      args=(self,), Dfun=jac_dtwa, full_output=True)
-                else:
-                    s, info = odeint(func_dtwa, s_init, t_output,\
-                      args=(self,), Dfun=None, full_output=True)
+            if self.jac:
+                s = odeint(func_dtwa, s_init, t_output,\
+                      args=(self,), Dfun=jac_dtwa, **odeint_kwargs)
             else:
-                if self.jac:
-                    s = odeint(func_dtwa, s_init, t_output, args=(self,),\
-                      Dfun=jac_dtwa)
-                else:
-                    s = odeint(func_dtwa, s_init, t_output, args=(self,),\
-                      Dfun=None)
+                s = odeint(func_dtwa, s_init, t_output,\
+                      args=(self,), Dfun=None, **odeint_kwargs)
+            (s, info) = s if type(s) is tuple else (s, None)          
+            
             #Compute expectations <sx> and \sum_{ij}<sx_i sx_j> -<sx>^2 with
             #wigner func at t_output values LOCALLY for each initcond and
             #store them
@@ -287,7 +280,7 @@ class Dtwa_System:
         else:
             return None
 
-    def evolve(self, time_info, sampling="spr"):
+    def evolve(self, time_info, sampling="spr", **odeint_kwargs):
         """
         This function calls the lsode 'odeint' integrator from scipy package
         to evolve all the randomly sampled initial conditions in time.
@@ -303,7 +296,7 @@ class Dtwa_System:
 
 
            Usage:
-           data = d.evolve(times)
+           data = d.evolve(times, kwargs)
 
            Required parameters:
            times            = Time information. There are 2 options:
@@ -315,6 +308,7 @@ class Dtwa_System:
 
                                   Note that the integrator method and the actual step sizes
                                   are controlled internally by the integrator.
+                                  Pass arguments to them in 'kwargs'
                                   See the relevant docs for scipy.integrate.odeint.
           Return value:
           An OutData object that contains:
@@ -327,7 +321,7 @@ class Dtwa_System:
                respectively
         """
 
-        return self.dtwa_only(time_info)
+        return self.dtwa_only(time_info, **odeint_kwargs)
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD

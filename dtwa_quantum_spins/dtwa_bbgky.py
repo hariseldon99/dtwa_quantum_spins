@@ -269,7 +269,7 @@ class Dtwa_BBGKY_System:
             #The time independent part of the 10 subblock (dg_dot/ds):
             #is the SAME as ds_dot/dg
 
-    def dtwa_bbgky(self, time_info, sampling):
+    def dtwa_bbgky(self, time_info, sampling, **odeint_kwargs):
         comm = self.comm
         old_settings = np.seterr(all='ignore') #Prevent overflow warnings
         N = self.latsize
@@ -339,25 +339,15 @@ class Dtwa_BBGKY_System:
               local_seeds[runcount] + self.seed_offset)
             #Redirect unwanted stdout warning messages to /dev/null
             with stdout_redirected():
-                if self.verbose:
-                    if self.jac:
-                        s, info = odeint(func_dtwa_bbgky, \
-                          np.concatenate((s_init_spins, s_init_corrs)), t_output, \
-                            args=(self,), Dfun=jac_dtwa_bbgky, full_output=True)
-                    else:
-                        s, info = odeint(func_dtwa_bbgky, \
-                          np.concatenate((s_init_spins, s_init_corrs)),t_output, \
-                            args=(self,), Dfun=None, full_output=True)
+                if self.jac:
+                    s = odeint(func_dtwa_bbgky, \
+                      np.concatenate((s_init_spins, s_init_corrs)), t_output, \
+                        args=(self,), Dfun=jac_dtwa_bbgky, **odeint_kwargs)
                 else:
-                    if self.jac:
-                        s = odeint(func_dtwa_bbgky, \
-                          np.concatenate((s_init_spins, s_init_corrs)), \
-                            t_output, args=(self,), Dfun=jac_dtwa_bbgky)
-                    else:
-                        s = odeint(func_dtwa_bbgky, \
-                          np.concatenate((s_init_spins, s_init_corrs)), t_output, \
-                            args=(self,), Dfun=None)
-
+                    s = odeint(func_dtwa_bbgky, \
+                      np.concatenate((s_init_spins, s_init_corrs)),t_output, \
+                        args=(self,), Dfun=None, **odeint_kwargs)
+                (s, info) = s if type(s) is tuple else (s, None)
             #Computes |dH/dt|^2 for a particular alphavec & weighes it
             #If the rms over alphavec of these are 0, then each H is const
             if self.verbose:
@@ -389,6 +379,9 @@ class Dtwa_BBGKY_System:
         if rank == root:
             outdat.normalize_data(self.n_t, N)
             if self.verbose:
+                print("  ")
+                print("Integration output info:")
+                pprint(info)
                 print("\nt-deriv of Hamilt (abs square) with wigner avg: ")
                 print("  ")
                 print(tabulate({"time": t_output, \
@@ -404,7 +397,7 @@ class Dtwa_BBGKY_System:
             np.seterr(**old_settings)  # reset to default
             return None
 
-    def evolve(self, time_info, sampling="spr"):
+    def evolve(self, time_info, sampling="spr", **odeint_kwargs):
         """
         This function calls the lsode 'odeint' integrator from scipy package
         to evolve all the randomly sampled initial conditions in time.
@@ -420,7 +413,7 @@ class Dtwa_BBGKY_System:
 
 
            Usage:
-           data = d.evolve(times, sampling="spr")
+           data = d.evolve(times, sampling="spr", kwargs)
 
            Required parameters:
            times            = Time information. There are 2 options:
@@ -432,6 +425,7 @@ class Dtwa_BBGKY_System:
 
                                   Note that the integrator method and the actual step sizes
                                   are controlled internally by the integrator.
+                                  Pass arguments to them in 'kwargs'
                                   See the relevant docs for scipy.integrate.odeint.
 
            Optional parameters:
@@ -461,7 +455,7 @@ class Dtwa_BBGKY_System:
                respectively
         """
 
-        return self.dtwa_bbgky(time_info, sampling)
+        return self.dtwa_bbgky(time_info, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD

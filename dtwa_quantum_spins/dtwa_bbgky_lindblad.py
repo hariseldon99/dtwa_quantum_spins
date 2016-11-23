@@ -134,7 +134,7 @@ class Dtwa_BBGKY_Lindblad_System:
             self.gamma_ud, self.gamma_du, self.gamma_el = 0.0, 0.0, 0.0
         self.gamma_r = self.gamma_ud + self.gamma_du
 
-    def dtwa_bbgky(self, time_info, sampling):
+    def dtwa_bbgky(self, time_info, sampling, **odeint_kwargs):
         comm = self.comm
         old_settings = np.seterr(all='ignore') #Prevent overflow warnings
         N = self.latsize
@@ -204,15 +204,10 @@ class Dtwa_BBGKY_Lindblad_System:
               local_seeds[runcount] + self.seed_offset)
             #Redirect unwanted stdout warning messages to /dev/null
             with stdout_redirected():
-                if self.verbose:
-                    s, info = odeint(func_dtwa_bbgky_lindblad, \
-                      np.concatenate((s_init_spins, s_init_corrs)),t_output, \
-                        args=(self,), Dfun=None, full_output=True)
-                else:
-                    s = odeint(func_dtwa_bbgky_lindblad, \
-                      np.concatenate((s_init_spins, s_init_corrs)), t_output, \
-                        args=(self,), Dfun=None)
-
+                s = odeint(func_dtwa_bbgky_lindblad, \
+                  np.concatenate((s_init_spins, s_init_corrs)),t_output, \
+                    args=(self,), **odeint_kwargs)    
+                (s, info) = s if type(s) is tuple else (s, None)
             #Computes |dH/dt|^2 for a particular alphavec & weighes it
             #If the rms over alphavec of these are 0, then each H is const
             if self.verbose:
@@ -244,6 +239,9 @@ class Dtwa_BBGKY_Lindblad_System:
         if rank == root:
             outdat.normalize_data(self.n_t, N)
             if self.verbose:
+                print("  ")
+                print("Integration output info:")
+                pprint(info)
                 print("\nt-deriv of Hamilt (abs square) with wigner avg: ")
                 print("  ")
                 print(tabulate({"time": t_output, \
@@ -256,7 +254,7 @@ class Dtwa_BBGKY_Lindblad_System:
             np.seterr(**old_settings)  # reset to default
             return None
 
-    def evolve(self, time_info, sampling="spr"):
+    def evolve(self, time_info, sampling="spr", **odeint_kwargs):
         """
         This function calls the lsode 'odeint' integrator from scipy package
         to evolve all the randomly sampled initial conditions in time.
@@ -272,7 +270,7 @@ class Dtwa_BBGKY_Lindblad_System:
 
 
            Usage:
-           data = d.evolve(times, sampling="spr")
+           data = d.evolve(times, sampling="spr", kwargs)
 
            Required parameters:
            times            = Time information. There are 2 options:
@@ -284,6 +282,7 @@ class Dtwa_BBGKY_Lindblad_System:
 
                                   Note that the integrator method and the actual step sizes
                                   are controlled internally by the integrator.
+                                  Pass arguments to them in 'kwargs'
                                   See the relevant docs for scipy.integrate.odeint.
 
            Optional parameters:
@@ -313,7 +312,7 @@ class Dtwa_BBGKY_Lindblad_System:
                respectively
         """
 
-        return self.dtwa_bbgky(time_info, sampling)
+        return self.dtwa_bbgky(time_info, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
