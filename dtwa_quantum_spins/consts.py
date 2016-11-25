@@ -18,3 +18,5 @@ try:
 except ImportError:
     pbar_avail = False
     widgets = None
+
+fullstate_fname = 'fullstate_times.hdf5'

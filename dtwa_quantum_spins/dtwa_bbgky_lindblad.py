@@ -14,6 +14,7 @@ from tabulate import tabulate
 from consts import *
 from funcs import *
 from classes import *
+from dumpstate import *
 from dtwa_only import func_dtwa
 from dtwa_bbgky import func_dtwa_bbgky
 
@@ -81,7 +82,7 @@ class Dtwa_BBGKY_Lindblad_System:
     """
 
     def __init__(self, params, mpicomm, n_t=2000,\
-                            seed_offset=0, decoherence=None ,verbose=True):
+            seed_offset=0, decoherence=None ,verbose=True, fulldata_times=None):
         """
         Initiates an instance of the Dtwa_System class. Copies parameters
         over from an instance of ParamData and stores precalculated objects .
@@ -117,6 +118,9 @@ class Dtwa_BBGKY_Lindblad_System:
                               of the Weyl symbol of the Hamiltonian that you
                               have provided via the 'hopmat' and other input
                               in ParamData. Defaults to 'False'.
+           fulldata_times   = numpy array containing the times when the full 
+                              state data will be dumped. Data is not dumped if
+                              set to None. Default is None.
 
           Return value:
           An object that stores all the parameters above.
@@ -133,6 +137,7 @@ class Dtwa_BBGKY_Lindblad_System:
         else:
             self.gamma_ud, self.gamma_du, self.gamma_el = 0.0, 0.0, 0.0
         self.gamma_r = self.gamma_ud + self.gamma_du
+        self.fulldata_times = fulldata_times
 
     def dtwa_bbgky(self, time_info, sampling, **odeint_kwargs):
         comm = self.comm
@@ -180,10 +185,13 @@ class Dtwa_BBGKY_Lindblad_System:
         #initial conditions. Each i.c. is a 2N sized array
         #now, each process sends its value of nt_loc to root
         all_ntlocs = comm.gather(nt_loc, root=root)
+        all_ntlocs = comm.bcast(all_ntlocs, root=root)
+        all_ntlocs = np.array(all_ntlocs)
+        if self.fulldata_times is not None:
+            build_statefile(self, all_ntlocs)
         #Let the root process initialize nt unique integers for random seeds
         if rank == root:
             all_seeds = np.arange(self.n_t, dtype=np.int64)+1
-            all_ntlocs = np.array(all_ntlocs)
             all_displacements = np.roll(np.cumsum(all_ntlocs), root+1)
             all_displacements[root] = 0 # First displacement
         else:
