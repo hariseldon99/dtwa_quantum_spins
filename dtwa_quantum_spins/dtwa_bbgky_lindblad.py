@@ -183,7 +183,7 @@ class Dtwa_BBGKY_Lindblad_System:
         all_ntlocs = comm.gather(nt_loc, root=root)
         all_ntlocs = comm.bcast(all_ntlocs, root=root)
         all_ntlocs = np.array(all_ntlocs)
-        if self.fulldata_times is not None:
+        if self.fullstate_times is not None:
             fulloutfile = open_statefile(self)
             build_statefile(fulloutfile, all_ntlocs, self)
         #Let the root process initialize nt unique integers for random seeds
@@ -213,7 +213,7 @@ class Dtwa_BBGKY_Lindblad_System:
                   np.concatenate((s_init_spins, s_init_corrs)),t_output, \
                     args=(self,), **odeint_kwargs)    
                 (s, info) = s if type(s) is tuple else (s, None)
-            if self.fulldata_times is not None:
+            if self.fullstate_times is not None:
                 dump_states(fulloutfile, s, runcount, self)
             #Computes |dH/dt|^2 for a particular alphavec & weighes it
             #If the rms over alphavec of these are 0, then each H is const
@@ -228,7 +228,7 @@ class Dtwa_BBGKY_Lindblad_System:
             list_of_local_data.append(localdata)
             if self.verbose and pbar_avail and self.comm.rank == root:
                 bar.update(runcount)
-        if self.fulldata_times is not None:
+        if self.fullstate_times is not None:
             close_statefile(fulloutfile)
         #After loop above  sum reduce (don't forget to average) all locally
         #calculated expectations at each time to root
@@ -262,7 +262,7 @@ class Dtwa_BBGKY_Lindblad_System:
             np.seterr(**old_settings)  # reset to default
             return None
 
-    def evolve(self, time_info, sampling="spr", fulldata_times=None,\
+    def evolve(self, time_info, sampling="spr", fullstate_times=None,\
                                                               **odeint_kwargs):
         """
         This function calls the lsode 'odeint' integrator from scipy package
@@ -309,7 +309,7 @@ class Dtwa_BBGKY_Lindblad_System:
                               If not (ie if you're running pure dtwa), then only
                               "spr" sampling is implemented no matter what this
                               option is set to.
-           fulldata_times   = numpy array containing the times when the full 
+           fullstate_times   = numpy array containing the times when the full 
                               state data will be dumped. Data is not dumped if
                               set to None. Default is None.     
            odeint_kwargs    = keyword arguments for scipy.integrate.odeint                   
@@ -324,8 +324,8 @@ class Dtwa_BBGKY_Lindblad_System:
                'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
                respectively
         """
-        self.fulldata_times = np.array([\
-            time_info[(np.abs(time_info-t)).argmin()] for t in fulldata_times])
+        self.fullstate_times = np.array([\
+            time_info[(np.abs(time_info-t)).argmin()] for t in fullstate_times])
         return self.dtwa_bbgky(time_info, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
