@@ -82,7 +82,7 @@ class Dtwa_BBGKY_Lindblad_System:
     """
 
     def __init__(self, params, mpicomm, n_t=2000,\
-            seed_offset=0, decoherence=None ,verbose=True, fulldata_times=None):
+            seed_offset=0, decoherence=None, verbose=True):
         """
         Initiates an instance of the Dtwa_System class. Copies parameters
         over from an instance of ParamData and stores precalculated objects .
@@ -118,14 +118,11 @@ class Dtwa_BBGKY_Lindblad_System:
                               of the Weyl symbol of the Hamiltonian that you
                               have provided via the 'hopmat' and other input
                               in ParamData. Defaults to 'False'.
-           fulldata_times   = numpy array containing the times when the full 
-                              state data will be dumped. Data is not dumped if
-                              set to None. Default is None.
+           
 
           Return value:
           An object that stores all the parameters above.
         """
-
         self.__dict__.update(params.__dict__)
         self.n_t = n_t
         self.comm = mpicomm
@@ -137,7 +134,6 @@ class Dtwa_BBGKY_Lindblad_System:
         else:
             self.gamma_ud, self.gamma_du, self.gamma_el = 0.0, 0.0, 0.0
         self.gamma_r = self.gamma_ud + self.gamma_du
-        self.fulldata_times = fulldata_times
 
     def dtwa_bbgky(self, time_info, sampling, **odeint_kwargs):
         comm = self.comm
@@ -266,7 +262,8 @@ class Dtwa_BBGKY_Lindblad_System:
             np.seterr(**old_settings)  # reset to default
             return None
 
-    def evolve(self, time_info, sampling="spr", **odeint_kwargs):
+    def evolve(self, time_info, sampling="spr", fulldata_times=None,\
+                                                              **odeint_kwargs):
         """
         This function calls the lsode 'odeint' integrator from scipy package
         to evolve all the randomly sampled initial conditions in time.
@@ -312,6 +309,10 @@ class Dtwa_BBGKY_Lindblad_System:
                               If not (ie if you're running pure dtwa), then only
                               "spr" sampling is implemented no matter what this
                               option is set to.
+           fulldata_times   = numpy array containing the times when the full 
+                              state data will be dumped. Data is not dumped if
+                              set to None. Default is None.     
+           odeint_kwargs    = keyword arguments for scipy.integrate.odeint                   
 
           Return value:
           An OutData object that contains:
@@ -323,7 +324,8 @@ class Dtwa_BBGKY_Lindblad_System:
                'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
                respectively
         """
-
+        self.fulldata_times = np.array([\
+            time_info[(np.abs(time_info-t)).argmin()] for t in fulldata_times])
         return self.dtwa_bbgky(time_info, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
