@@ -3,7 +3,7 @@ import numpy as np
 from mpi4py import MPI
 import h5py
 
-def open_statefile(filename=fullstate_fname,mode='w', driver='mpio', params):
+def open_statefile(params, filename=fullstate_fname,mode='w', driver='mpio'):
     f = h5py.File(filename, mode, driver=driver, comm=params.comm)
     return f
 

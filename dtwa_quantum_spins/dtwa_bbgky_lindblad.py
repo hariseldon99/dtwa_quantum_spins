@@ -188,7 +188,8 @@ class Dtwa_BBGKY_Lindblad_System:
         all_ntlocs = comm.bcast(all_ntlocs, root=root)
         all_ntlocs = np.array(all_ntlocs)
         if self.fulldata_times is not None:
-            build_statefile(self, all_ntlocs)
+            fulloutfile = open_statefile(self)
+            build_statefile(fulloutfile, all_ntlocs, self)
         #Let the root process initialize nt unique integers for random seeds
         if rank == root:
             all_seeds = np.arange(self.n_t, dtype=np.int64)+1
@@ -216,6 +217,8 @@ class Dtwa_BBGKY_Lindblad_System:
                   np.concatenate((s_init_spins, s_init_corrs)),t_output, \
                     args=(self,), **odeint_kwargs)    
                 (s, info) = s if type(s) is tuple else (s, None)
+            if self.fulldata_times is not None:
+                dump_states(fulloutfile, s, runcount, self)
             #Computes |dH/dt|^2 for a particular alphavec & weighes it
             #If the rms over alphavec of these are 0, then each H is const
             if self.verbose:
@@ -229,7 +232,8 @@ class Dtwa_BBGKY_Lindblad_System:
             list_of_local_data.append(localdata)
             if self.verbose and pbar_avail and self.comm.rank == root:
                 bar.update(runcount)
-
+        if self.fulldata_times is not None:
+            close_statefile(fulloutfile)
         #After loop above  sum reduce (don't forget to average) all locally
         #calculated expectations at each time to root
         outdat = \
