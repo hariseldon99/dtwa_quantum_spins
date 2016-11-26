@@ -324,8 +324,9 @@ class Dtwa_BBGKY_Lindblad_System:
                'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
                respectively
         """
-        self.fullstate_times = np.array([\
-            time_info[(np.abs(time_info-t)).argmin()] for t in fullstate_times])
+        if fullstate_times is not None:
+            self.fullstate_times = np.array([time_info[\
+                    (np.abs(time_info-t)).argmin()] for t in fullstate_times])
         return self.dtwa_bbgky(time_info, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
