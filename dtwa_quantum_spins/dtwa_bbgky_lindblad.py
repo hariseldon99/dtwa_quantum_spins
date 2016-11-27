@@ -323,6 +323,7 @@ class Dtwa_BBGKY_Lindblad_System:
             exit(0)
         else:
             exit(0)
+        self.fullstate_times = fullstate_times    
         return self.dtwa_bbgky(t_output, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
