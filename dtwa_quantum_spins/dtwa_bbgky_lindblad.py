@@ -135,7 +135,7 @@ class Dtwa_BBGKY_Lindblad_System:
             self.gamma_ud, self.gamma_du, self.gamma_el = 0.0, 0.0, 0.0
         self.gamma_r = self.gamma_ud + self.gamma_du
 
-    def dtwa_bbgky(self, time_info, sampling, **odeint_kwargs):
+    def dtwa_bbgky(self, t_output, sampling, **odeint_kwargs):
         comm = self.comm
         old_settings = np.seterr(all='ignore') #Prevent overflow warnings
         N = self.latsize
@@ -152,18 +152,6 @@ class Dtwa_BBGKY_Lindblad_System:
             pprint(vars(out), depth=2)
         if rank == root and not self.verbose:
             pprint("# Starting run ...")
-        if type(time_info) is tuple:
-            (t_init, t_final, n_steps) = time_info
-            dt = (t_final-t_init)/(n_steps-1.0)
-            t_output = np.arange(t_init, t_final, dt)
-        elif type(time_info) is list  or np.ndarray:
-            t_output = time_info
-        elif rank == root:
-            print("Please enter either a tuple or a list for the time interval")
-            exit(0)
-        else:
-            exit(0)
-
         #Let each process get its chunk of n_t by round robin
         nt_loc = 0
         iterator = rank
@@ -324,10 +312,22 @@ class Dtwa_BBGKY_Lindblad_System:
                'sxvar, syvar, szvar, sxyvar, sxzvar, syzvar'
                respectively
         """
+        if type(time_info) is tuple:
+            (t_init, t_final, n_steps) = time_info
+            dt = (t_final-t_init)/(n_steps-1.0)
+            t_output = np.arange(t_init, t_final, dt)
+        elif type(time_info) is list  or np.ndarray:
+            t_output = time_info
+        elif rank == root:
+            print("Please enter either a tuple or a list for the time interval")
+            exit(0)
+        else:
+            exit(0)
+            
         if fullstate_times is not None:
-            self.fullstate_times = np.array([time_info[\
-                    (np.abs(time_info-t)).argmin()] for t in fullstate_times])
-        return self.dtwa_bbgky(time_info, sampling, **odeint_kwargs)
+            self.fullstate_times = np.array([t_output[\
+                    (np.abs(t_output-t)).argmin()] for t in fullstate_times])
+        return self.dtwa_bbgky(t_output, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
     comm = MPI.COMM_WORLD
