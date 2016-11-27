@@ -212,7 +212,7 @@ class Dtwa_BBGKY_Lindblad_System:
                 list_of_dhwdt_abs2.extend(dhwdt_abs2)
 
             s = np.array(s, dtype=np.complex128)#Widen memory to reduce overflows
-            localdata = bbgky_observables(t_output, s, t_output, self)
+            localdata = bbgky_observables(t_output, s, self)
             list_of_local_data.append(localdata)
             if self.verbose and pbar_avail and self.comm.rank == root:
                 bar.update(runcount)
