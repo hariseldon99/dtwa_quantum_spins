@@ -202,7 +202,7 @@ class Dtwa_BBGKY_Lindblad_System:
                     args=(self,), **odeint_kwargs)    
                 (s, info) = s if type(s) is tuple else (s, None)
             if self.fullstate_times is not None:
-                dump_states(fulloutfile, s, runcount, self)
+                dump_states(fulloutfile, s, runcount, t_output, self)
             #Computes |dH/dt|^2 for a particular alphavec & weighes it
             #If the rms over alphavec of these are 0, then each H is const
             if self.verbose:
