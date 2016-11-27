@@ -173,7 +173,7 @@ class Dtwa_BBGKY_Lindblad_System:
         all_ntlocs = np.array(all_ntlocs)
         if self.fullstate_times is not None:
             fulloutfile = open_statefile(self)
-            build_statefile(fulloutfile, all_ntlocs, self)
+            build_statefile(fulloutfile, all_ntlocs,t_output, self)
         #Let the root process initialize nt unique integers for random seeds
         if rank == root:
             all_seeds = np.arange(self.n_t, dtype=np.int64)+1
@@ -212,7 +212,7 @@ class Dtwa_BBGKY_Lindblad_System:
                 list_of_dhwdt_abs2.extend(dhwdt_abs2)
 
             s = np.array(s, dtype=np.complex128)#Widen memory to reduce overflows
-            localdata = bbgky_observables(t_output, s, self)
+            localdata = bbgky_observables(t_output, s, t_output, self)
             list_of_local_data.append(localdata)
             if self.verbose and pbar_avail and self.comm.rank == root:
                 bar.update(runcount)
@@ -323,10 +323,6 @@ class Dtwa_BBGKY_Lindblad_System:
             exit(0)
         else:
             exit(0)
-            
-        if fullstate_times is not None:
-            self.fullstate_times = np.array([t_output[\
-                    (np.abs(t_output-t)).argmin()] for t in fullstate_times])
         return self.dtwa_bbgky(t_output, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
