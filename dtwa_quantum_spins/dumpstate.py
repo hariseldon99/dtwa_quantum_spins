@@ -40,9 +40,10 @@ def dump_states(hdf5_fp, sdata, sample_iter, t_output, params):
     #all procs must do this
     for t in params.fullstate_times:
         tidx = (np.abs(t_output-t)).argmin()
+        tm = t_output[tidx]
         samplename = 'sample_' + str(rank).decode("utf-8") + "_" + \
                                                str(sample_iter).decode("utf-8")
-        s = hdf5_fp['time_' + str(t).decode("utf-8")+'/'+ samplename +'/'+ 's'] 
+        s = hdf5_fp['time_' + str(tm).decode("utf-8")+'/'+ samplename +'/'+ 's'] 
         s[:] = sdata[tidx, 0:3*N].reshape(3,N)
         g = hdf5_fp['time_' + str(t).decode("utf-8")+'/'+ samplename +'/'+ 'g'] 
         g[:] = sdata[tidx, 3*N:].reshape(3,3,N,N)
