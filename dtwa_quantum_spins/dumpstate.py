@@ -45,7 +45,7 @@ def dump_states(hdf5_fp, sdata, sample_iter, t_output, params):
                                                str(sample_iter).decode("utf-8")
         s = hdf5_fp['time_' + str(tm).decode("utf-8")+'/'+ samplename +'/'+ 's'] 
         s[:] = sdata[tidx, 0:3*N].reshape(3,N)
-        g = hdf5_fp['time_' + str(t).decode("utf-8")+'/'+ samplename +'/'+ 'g'] 
+        g = hdf5_fp['time_' + str(tm).decode("utf-8")+'/'+ samplename +'/'+ 'g'] 
         g[:] = sdata[tidx, 3*N:].reshape(3,3,N,N)
    
 
