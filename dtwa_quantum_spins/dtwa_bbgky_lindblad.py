@@ -172,7 +172,7 @@ class Dtwa_BBGKY_Lindblad_System:
         all_ntlocs = comm.bcast(all_ntlocs, root=root)
         all_ntlocs = np.array(all_ntlocs)
         if self.fullstate_times is not None:
-            fulloutfile = open_statefile(self)
+            fulloutfile = open_statefile(self, filename=self.fullstate_outfile)
             build_statefile(fulloutfile, all_ntlocs,t_output, self)
         #Let the root process initialize nt unique integers for random seeds
         if rank == root:
@@ -251,7 +251,7 @@ class Dtwa_BBGKY_Lindblad_System:
             return None
 
     def evolve(self, time_info, sampling="spr", fullstate_times=None,\
-                                                              **odeint_kwargs):
+                                      fullstate_outfile=None, **odeint_kwargs):
         """
         This function calls the lsode 'odeint' integrator from scipy package
         to evolve all the randomly sampled initial conditions in time.
@@ -324,6 +324,7 @@ class Dtwa_BBGKY_Lindblad_System:
         else:
             exit(0)
         self.fullstate_times = fullstate_times    
+        self.fullstate_outfile = fullstate_outfile
         return self.dtwa_bbgky(t_output, sampling, **odeint_kwargs)
 
 if __name__ == '__main__':
