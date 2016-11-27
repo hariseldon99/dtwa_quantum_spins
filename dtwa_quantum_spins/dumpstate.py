@@ -43,7 +43,7 @@ def dump_states(hdf5_fp, sdata, sample_iter, params):
         s = hdf5_fp['time_' + str(t).decode("utf-8")+'/'+ samplename +'/'+ 's'] 
         s[:] = sdata[0:3*N].reshape(3,N)
         g = hdf5_fp['time_' + str(t).decode("utf-8")+'/'+ samplename +'/'+ 'g'] 
-        g[:] = sdata[0:3*N].reshape(3,3,N,N)
+        g[:] = sdata[3*N:].reshape(3,3,N,N)
    
 
 def close_statefile(hdf5_fp):
