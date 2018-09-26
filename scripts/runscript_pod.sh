@@ -1,7 +1,7 @@
 #!/bin/bash
 #########################################################################
 ## Name of my job
-#PBS -N lindblad_testing
+#PBS -N dtwa_test
 
 ## Name of the job queue
 #PBS -q S30
@@ -10,14 +10,14 @@
 #PBS -l walltime=00:02:00
 
 ##Number of nodes and procs per node.
-#PBS -l nodes=1:ppn=7
+#PBS -l nodes=1:ppn=14
 
 ##Send me email when my job aborts, begins, or ends
 #PBS -m ea
 #PBS -M daneel@utexas.edu
 
 ## Name of python script to be executed
-SCRIPT="./large_N.py"
+SCRIPT="./dtwa_test.py"
 #########################################################################
 
 ##Export all PBS environment variables
