@@ -63,7 +63,7 @@ class ParamData:
         N = self.latsize
         self.fullsize_2ndorder = 3 * N + 9 * N**2
         self.deltamn = np.eye(N)
-        if(hopmat == None): #Use the default hopping matrix
+        if(hopmat.all() == None): #Use the default hopping matrix
             #This is the dense Jmn hopping matrix with inverse
             #power law decay for periodic boundary conditions.
             J = dia_matrix((N, N))
