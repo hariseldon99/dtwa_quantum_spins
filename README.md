@@ -198,7 +198,7 @@ if comm.Get_rank() == 0:
 Relevant Literature:
 -----
 
-###Relevant papers:
+### Relevant papers:
 * [PRM: arXiv:1510.03768 (2015)](http://arxiv.org/abs/1510.03768)
 * [Wooters: Annals of Physics 176, 1–21 (1987)](http://dx.doi.org/10.1016/0003-4916%2887%2990176-X)
 * [Anatoli : Ann. Phys 325 (2010) 1790-1852](http://arxiv.org/abs/0905.3384)
@@ -206,13 +206,13 @@ Relevant Literature:
 * [Schachenmayer: Phys. Rev. X 5 011022 (2015)](http://arxiv.org/abs/1408.4441)
 * [Foss-Feig: Physical Review A 87, 042101 (2013)](https://arxiv.org/abs/1209.5795)
 
-###Relevant docs for the bundled version of mpi4py reduce:
+### Relevant docs for the bundled version of mpi4py reduce:
 * [GitHub](https://github.com/mpi4py/mpi4py/blob/master/demo/reductions/reductions.py)
 * [readthedocs.org](https://mpi4py.readthedocs.org/en/latest/overview.html#collective-communications)
 * [Google Groups](https://groups.google.com/forum/#!msg/mpi4py/t8HZoYg8Ldc/-erl6BMKpLAJ)
 
 
-###External dependencies:
+### External dependencies:
 1. mpi4py - MPI for Python
 
     _\_-MPI (Parallelizes the different samplings of the dtwa)
@@ -233,10 +233,12 @@ Relevant Literature:
     
     _\_-tabulate (Used for dumping tabular data)
 
-###Changelog
+Changelog
+-----
 2020-01-16 - Now, the z-component of the h-vector may be varied periodically in time. For now, this has been implemented in DTWA-only, not in BBGKY or Lindblad. 
 
-###TODO:
+TODO
+-----
 1. MIGRATE TO PYTHON 3. CHANGE ALL TABS TO SPACES FOR INDENTATION
 2. How to handle the MemoryError for large hopping matrices:
    * Write in README above docs for using np.memmap for the hopping matrix
