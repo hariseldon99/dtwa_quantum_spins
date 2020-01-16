@@ -14,7 +14,7 @@ class ParamData:
 
     def __init__(self, hopmat = None, norm=1.0, latsize=11, \
                           hx=0.0, hy=0.0, hz=0.0,\
-                            jx=0.0, jy=0.0, jz=1.0):
+                            jx=0.0, jy=0.0, jz=1.0, omega = 0.0, hdc = 0.0, amp = 0.0):
 
         """
          Usage:
@@ -50,12 +50,15 @@ class ParamData:
          j(x,y,z) =  The values of the bare hopping i.e, the terms that scale
                      each \sigma^{xyz}_i\sigma^{xyz}_j.
                      Defaults to (0,0,1). Set all to unity if so desired.
+         omega    =  The value of frequency associated with the drive (preferably
+                     the transverse field) field.
 
          Return value:
          An object that stores all the parameters above.
         """
 
         self.norm = norm
+        self.omega = omega
         self.latsize = latsize
         self.hx, self.hy, self.hz  = hx , hy, hz#x transverse field
         self.jx, self.jy, self.jz = jx, jy, jz #hopping
@@ -63,6 +66,8 @@ class ParamData:
         N = self.latsize
         self.fullsize_2ndorder = 3 * N + 9 * N**2
         self.deltamn = np.eye(N)
+        self.hdc = hdc
+ 	self.amp = amp
         if(hopmat.all() == None): #Use the default hopping matrix
             #This is the dense Jmn hopping matrix with inverse
             #power law decay for periodic boundary conditions.

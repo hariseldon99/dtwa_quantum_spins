@@ -9,6 +9,7 @@ The Hamiltonian that has been coded is the general Curie-Weiss - type hamiltonia
 
 ![equation](./hamilt.png)
 
+
 Here, the Pauli SU(2) representation is used, the Roman indices run through the lattice sites, and Greek indices run through the three spatial directions. A lattice in any dimensions and with any layout can be used, as long as the site index counting is flattened to 1d. Note that the initial condition is hard-coded to a fully x-polarized state.
 
 The relevant terms (from left to right) are:
@@ -231,6 +232,9 @@ Relevant Literature:
 4. tabulate - Tabulate module 
     
     _\_-tabulate (Used for dumping tabular data)
+
+###Changelog
+2020-01-16 - Now, the z-component of the h-vector may be varied periodically in time. For now, this has been implemented in DTWA-only, not in BBGKY or Lindblad. 
 
 ###TODO:
 1. MIGRATE TO PYTHON 3. CHANGE ALL TABS TO SPACES FOR INDENTATION

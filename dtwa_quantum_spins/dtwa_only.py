@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import division, print_function
-
 from mpi4py import MPI
 from reductions import Intracomm
 from redirect_stdout import stdout_redirected
@@ -26,13 +25,14 @@ def func_dtwa(s, t, param):
     The RHS of general case, per Schachemmayer eq A2
     """
     N = param.latsize
+    drivemat = drive(t, param)
     #s[0:N] = sx , s[N:2*N] = sy, s[2*N:3*N] = sz
     jsx = 2.0 * param.jx * param.jmat.dot(s[0:N])/param.norm
     jsx += 2.0 * param.hx
     jsy = 2.0 * param.jy * param.jmat.dot(s[N:2*N])/param.norm
     jsy += 2.0 * param.hy
     jsz = 2.0 * param.jz * param.jmat.dot(s[2*N:3*N])/param.norm
-    jsz += 2.0 * param.hz
+    jsz += 2.0 * param.hz * drivemat
     dsxdt = s[N:2*N] * jsz - s[2*N:3*N] * jsy
     dsydt = s[2*N:3*N] * jsx - s[0:N] * jsz
     dszdt = s[0:N] * jsy - s[N:2*N] * jsx
@@ -54,6 +54,7 @@ def jac_dtwa(s, t, param):
     corresponding vector element. This is implemented by numpy.multiply()
     """
     N = param.latsize
+    drivemat = drive(t, param)
     #s[0:N] = sx , s[N:2*N] = sy, s[2*N:3*N] = sz
     full_jacobian = np.zeros(shape=(3*N, 3*N))
     diag_jsx = np.diagflat((param.jmat.dot(s[0:N])))/param.norm
@@ -63,7 +64,7 @@ def jac_dtwa(s, t, param):
     hash_jsy = (np.multiply(param.jmat.T, s[N:2*N]).T)/param.norm
     hash_jsz = (np.multiply(param.jmat.T, s[2*N:3*N]).T)/param.norm
     full_jacobian[0:N, N:2*N] = param.jz * diag_jsx + drivemat * param.hz\
-      -param.jy * hash_jsz
+      - param.jy * hash_jsz
     full_jacobian[N:2*N, 0:N] = -param.jz * diag_jsx - \
       param.hz + param.jx * hash_jsz
     full_jacobian[0:N, 2*N:3*N] = -param.jy * diag_jsy - \
@@ -92,7 +93,7 @@ class Dtwa_System:
 
     def __init__(self, params, mpicomm, n_t=2000,\
                             seed_offset=0,   jac=False,\
-                              verbose=True):
+                              verbose=False):
         """
         Initiates an instance of the Dtwa_System class. Copies parameters
         over from an instance of ParamData and stores precalculated objects .
