@@ -5,6 +5,9 @@ from scipy.signal import fftconvolve
 from consts import *
 from classes import *
 
+def drive(t, param):
+    return param.hdc + param.amp * np.cos(param.omega * t)
+
 def sample(param, sampling, seed):
     """
     Different phase space sampling schemes for the initial state,
